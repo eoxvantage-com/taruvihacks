@@ -1,4 +1,4 @@
-import { Authenticated, Refine } from "@refinedev/core";
+import { Authenticated, Refine, useGetIdentity } from "@refinedev/core";
 import { DevtoolsPanel, DevtoolsProvider } from "@refinedev/devtools";
 import { RefineKbar, RefineKbarProvider } from "@refinedev/kbar";
 
@@ -10,6 +10,7 @@ import {
 } from "@refinedev/mui";
 import Navkit from '@taruvi/navkit';
 import Box from "@mui/material/Box";
+import LinearProgress from "@mui/material/LinearProgress";
 import CssBaseline from "@mui/material/CssBaseline";
 import GlobalStyles from "@mui/material/GlobalStyles";
 import routerProvider, { DocumentTitleHandler } from "@refinedev/react-router";
@@ -22,6 +23,7 @@ import {
   taruviAppProvider,
   taruviUserProvider,
   // taruviAccessControlProvider, // Uncomment to enable Cerbos-based access control
+  type TaruviUser,
 } from "./providers/refineProviders";
 import { CustomSider, ErrorBoundary, UnsavedChangesDialog } from "./components";
 import { LoginRedirect } from "./components/auth/LoginRedirect";
@@ -30,6 +32,37 @@ import {AppSettingsProvider, useAppSettings} from "./contexts/app-settings";
 import { useContext, useRef, useEffect } from "react";
 import { Home } from "./pages/home";
 import { Login } from "./pages/login";
+import { CompaniesList, CompanyShow } from "./pages/companies";
+import { Onboarding } from "./pages/onboarding";
+import BusinessRoundedIcon from "@mui/icons-material/BusinessRounded";
+
+// ─── Role helpers ────────────────────────────────────────────────────────────
+const ADMIN_ROLE_SLUGS = new Set([
+  "hackathonapp-admin",
+  "hackathonapp-super-admin",
+]);
+
+function useIsAdmin() {
+  const { data: identity, isLoading } = useGetIdentity<TaruviUser>();
+  const isAdmin =
+    identity?.roles?.some((r) => ADMIN_ROLE_SLUGS.has(r.slug)) ?? false;
+  return { isAdmin, isLoading };
+}
+
+// Redirects to /onboarding for non-admins, renders children for admins.
+function RequireAdmin({ children }: { children: React.ReactNode }) {
+  const { isAdmin, isLoading } = useIsAdmin();
+  if (isLoading) return <LinearProgress />;
+  if (!isAdmin) return <Navigate to="/onboarding" replace />;
+  return <>{children}</>;
+}
+
+// Index route: admins → Home, everyone else → /onboarding.
+function RoleBasedHome() {
+  const { isAdmin, isLoading } = useIsAdmin();
+  if (isLoading) return <LinearProgress />;
+  return isAdmin ? <Home /> : <Navigate to="/onboarding" replace />;
+}
 
 const AppContent = () => {
   const { setMode } = useContext(ColorModeContext);
@@ -74,7 +107,16 @@ const AppContent = () => {
                 authProvider={taruviAuthProvider}
                 // accessControlProvider={taruviAccessControlProvider} // Uncomment to enable Cerbos-based access control
                 resources={[
-                  // Add your resources here
+                  {
+                    name: "companies",
+                    list: "/companies",
+                    show: "/companies/:id",
+                    meta: {
+                      label: "Companies",
+                      icon: <BusinessRoundedIcon />,
+                      canDelete: true,
+                    },
+                  },
                 ]}
                 options={{
                   syncWithLocation: true,
@@ -95,29 +137,43 @@ const AppContent = () => {
                   >
                     <Route path="/login" element={<Login />} />
                   </Route>
+                  {/* Authenticated wrapper — no layout (full-screen routes) */}
                   <Route
                     element={
                       <Authenticated
                         key="authenticated-inner"
                         fallback={<LoginRedirect />}
                       >
-                        <ThemedLayout
-                          Header={() => null}
-                          Sider={CustomSider}
-                          initialSiderCollapsed={true}
-                          childrenBoxProps={{ sx: { p: 0 } }}
-                        >
-                          <Box sx={{ ml: { xs: 0, md: '72px' }, transition: 'margin-left 0.2s ease-in-out' }}>
-                            <ErrorBoundary>
-                              <Outlet />
-                            </ErrorBoundary>
-                          </Box>
-                        </ThemedLayout>
+                        <Outlet />
                       </Authenticated>
                     }
                   >
-                    <Route index element={<Home />} />
-                    <Route path="*" element={<ErrorComponent />} />
+                    <Route path="onboarding" element={<Onboarding />} />
+
+                    {/* Admin portal — requires Admin or Super Admin role */}
+                    <Route
+                      element={
+                        <RequireAdmin>
+                          <ThemedLayout
+                            Header={() => null}
+                            Sider={CustomSider}
+                            initialSiderCollapsed={true}
+                            childrenBoxProps={{ sx: { p: 0 } }}
+                          >
+                            <Box sx={{ ml: { xs: 0, md: '72px' }, transition: 'margin-left 0.2s ease-in-out' }}>
+                              <ErrorBoundary>
+                                <Outlet />
+                              </ErrorBoundary>
+                            </Box>
+                          </ThemedLayout>
+                        </RequireAdmin>
+                      }
+                    >
+                      <Route index element={<RoleBasedHome />} />
+                      <Route path="companies" element={<CompaniesList />} />
+                      <Route path="companies/:id" element={<CompanyShow />} />
+                      <Route path="*" element={<ErrorComponent />} />
+                    </Route>
                   </Route>
                 </Routes>
 
