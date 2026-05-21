@@ -29,6 +29,9 @@ import GitHubIcon from "@mui/icons-material/GitHub";
 const LOGO_URL =
   "https://hackathonsite.taruvi.cloud/api/apps/hackathonapp/storage/buckets/storage/objects/Logo%20Only%20(2).png";
 
+const BUILDER_URL =
+  "https://hackathonsite.taruvi.cloud/api/apps/hackathonapp/storage/buckets/storage/objects/builder.png";
+
 // ─── Config ────────────────────────────────────────────────────────────────
 const VIDEO_URL =
   "https://hackathonsite.taruvi.cloud/api/apps/hackathonapp/storage/buckets/storage/objects/Taruvi_Base_Final_v8.mp4";
@@ -112,6 +115,19 @@ interface Company {
   id: string;
   name: string;
   site_slug?: string;
+}
+
+interface Theme {
+  id: string;
+  name: string;
+  description?: string;
+  image_url?: string;
+}
+
+interface CompanyTheme {
+  id: string;
+  company_id: string;
+  theme_id: string;
 }
 
 // ─── Design tokens ─────────────────────────────────────────────────────────
@@ -288,7 +304,7 @@ function SplashScreen({ onDone }: { onDone: () => void }) {
             lineHeight: 1,
           }}
         >
-          TaruviHacks
+          Build-a-thon
         </Typography>
       </motion.div>
 
@@ -398,25 +414,7 @@ function WelcomeStep({
   onNext: () => void;
 }) {
   return (
-    <Box sx={{ py: 2 }}>
-      {/* Logo */}
-      <Box sx={{ mb: 4, textAlign: "center" }}>
-        <Box
-          component="img"
-          src={LOGO_URL}
-          alt="TaruviHacks"
-          sx={{
-            height: 64,
-            width: "auto",
-            maxWidth: 220,
-            objectFit: "contain",
-            mb: 2,
-            filter: "drop-shadow(0 4px 12px rgba(30,136,229,0.18))",
-          }}
-        />
-        <Box sx={{ width: 40, height: 3, borderRadius: 999, bgcolor: BLUE, mx: "auto", opacity: 0.5 }} />
-      </Box>
-
+    <Box sx={{ py: 2, textAlign: "center" }}>
       <Typography
         variant="h3"
         sx={{
@@ -424,14 +422,13 @@ function WelcomeStep({
           fontWeight: 700,
           mb: 1,
           color: "#1a2a3a",
-          textAlign: "center",
         }}
       >
         Hey {name}! 👋
       </Typography>
 
       {companyName && (
-        <Box sx={{ mb: 2.5, textAlign: "center" }}>
+        <Box sx={{ mb: 3 }}>
           <Chip
             label={companyName}
             size="small"
@@ -446,21 +443,15 @@ function WelcomeStep({
         </Box>
       )}
 
-      <HelperMessage>
-        Welcome to TaruviHacks. I am your onboarding guide, and I will walk you through each step of the setup process. We will begin with a brief Non-Disclosure Agreement, followed by an introduction to the TaruviBase platform, and then proceed to provision your workspace and development environment. Please follow the steps in order to ensure a smooth setup.
-      </HelperMessage>
-
-      <Box sx={{ textAlign: "center" }}>
-        <Button
-          variant="contained"
-          size="large"
-          endIcon={<ArrowForwardRoundedIcon />}
-          onClick={onNext}
-          sx={{ px: 4 }}
-        >
-          Let's Go!
-        </Button>
-      </Box>
+      <Button
+        variant="contained"
+        size="large"
+        endIcon={<ArrowForwardRoundedIcon />}
+        onClick={onNext}
+        sx={{ px: 4 }}
+      >
+        Let's Go!
+      </Button>
     </Box>
   );
 }
@@ -602,6 +593,114 @@ function VideoStep({ name, onNext }: { name: string; onNext: () => void }) {
           style={{ width: "100%", display: "block", maxHeight: "60vh" }}
         />
       </Box>
+
+      <Button
+        variant="contained"
+        size="large"
+        endIcon={<ArrowForwardRoundedIcon />}
+        onClick={onNext}
+        sx={{ px: 4 }}
+      >
+        Continue
+      </Button>
+    </Box>
+  );
+}
+
+// ─── Step 3 — Themes ────────────────────────────────────────────────────────
+function ThemesStep({
+  name,
+  themes,
+  onNext,
+}: {
+  name: string;
+  themes: Theme[];
+  onNext: () => void;
+}) {
+  return (
+    <Box>
+      <Typography
+        variant="h4"
+        sx={{ fontFamily: "'Quicksand', sans-serif", fontWeight: 700, mb: 0.75 }}
+      >
+        Your Hackathon Themes
+      </Typography>
+
+      <HelperMessage>
+        Now that you have an understanding of TaruviBase, {name}, here are the themes assigned to your company for this hackathon. These are the problem areas your team will be building solutions for. Take a moment to review them before setting up your workspace.
+      </HelperMessage>
+
+      {themes.length === 0 ? (
+        <Box
+          sx={{
+            ...glassBlue,
+            borderRadius: "16px",
+            p: 4,
+            textAlign: "center",
+            mb: 4,
+          }}
+        >
+          <Typography variant="body2" color="text.secondary">
+            No themes have been assigned to your company yet. Please check with your administrator.
+          </Typography>
+        </Box>
+      ) : (
+        <Box
+          sx={{
+            display: "grid",
+            gridTemplateColumns: { xs: "1fr", sm: "repeat(auto-fill, minmax(260px, 1fr))" },
+            gap: 2.5,
+            mb: 4,
+          }}
+        >
+          {themes.map((theme) => (
+            <Box
+              key={theme.id}
+              sx={{
+                ...glass,
+                borderRadius: "16px",
+                overflow: "hidden",
+                display: "flex",
+                flexDirection: "column",
+              }}
+            >
+              {theme.image_url ? (
+                <Box
+                  component="img"
+                  src={theme.image_url}
+                  alt={theme.name}
+                  sx={{ width: "100%", height: 160, objectFit: "cover" }}
+                />
+              ) : (
+                <Box
+                  sx={{
+                    height: 160,
+                    background: `linear-gradient(135deg, ${BLUE_LIGHT}, rgba(10,147,196,0.12))`,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  <Typography sx={{ fontSize: 48 }}>🎨</Typography>
+                </Box>
+              )}
+              <Box sx={{ p: 3 }}>
+                <Typography
+                  variant="h6"
+                  sx={{ fontFamily: "'Quicksand', sans-serif", fontWeight: 700, mb: 0.5 }}
+                >
+                  {theme.name}
+                </Typography>
+                {theme.description && (
+                  <Typography variant="body2" color="text.secondary" sx={{ lineHeight: 1.6 }}>
+                    {theme.description}
+                  </Typography>
+                )}
+              </Box>
+            </Box>
+          ))}
+        </Box>
+      )}
 
       <Button
         variant="contained"
@@ -974,7 +1073,7 @@ function CodespaceStep({ name, siteSlug }: { name: string; siteSlug?: string }) 
 }
 
 // ─── Main Onboarding component ───────────────────────────────────────────────
-const TOTAL_STEPS = 6;
+const TOTAL_STEPS = 7;
 
 export const Onboarding: React.FC = () => {
   const { open: notify } = useNotification();
@@ -1020,6 +1119,38 @@ export const Onboarding: React.FC = () => {
     id: invitation?.company_id ?? "",
     queryOptions: { enabled: !!invitation?.company_id },
   });
+
+  // Themes assigned to this company
+  const companyThemeFilters = useMemo(
+    () =>
+      invitation?.company_id
+        ? [{ field: "company_id", operator: "eq" as const, value: invitation.company_id }]
+        : [],
+    [invitation?.company_id]
+  );
+  const { result: companyThemesResult } = useList<CompanyTheme>({
+    resource: "company_themes",
+    filters: companyThemeFilters,
+    pagination: { pageSize: 10 },
+    queryOptions: { enabled: !!invitation?.company_id },
+  });
+  const companyThemeIds = (companyThemesResult?.data ?? []).map((ct) => ct.theme_id);
+
+  const themeFilters = useMemo(
+    () =>
+      companyThemeIds.length > 0
+        ? [{ field: "id", operator: "in" as const, value: companyThemeIds }]
+        : [],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [companyThemeIds.join(",")]
+  );
+  const { result: themesResult } = useList<Theme>({
+    resource: "themes",
+    filters: themeFilters,
+    pagination: { pageSize: 10 },
+    queryOptions: { enabled: companyThemeIds.length > 0 },
+  });
+  const assignedThemes = themesResult?.data ?? [];
 
   const { mutate: updateInv } = useUpdate();
 
@@ -1189,12 +1320,15 @@ export const Onboarding: React.FC = () => {
                     )}
                     {step === 2 && <VideoStep name={displayName} onNext={goNext} />}
                     {step === 3 && (
-                      <CreateAppStep name={displayName} siteSlug={siteSlug} onNext={goNext} />
+                      <ThemesStep name={displayName} themes={assignedThemes} onNext={goNext} />
                     )}
                     {step === 4 && (
+                      <CreateAppStep name={displayName} siteSlug={siteSlug} onNext={goNext} />
+                    )}
+                    {step === 5 && (
                       <CreateApiStep name={displayName} onNext={goNext} />
                     )}
-                    {step === 5 && <CodespaceStep name={displayName} siteSlug={siteSlug} />}
+                    {step === 6 && <CodespaceStep name={displayName} siteSlug={siteSlug} />}
                   </Box>
                 </motion.div>
               </AnimatePresence>
@@ -1226,9 +1360,86 @@ export const Onboarding: React.FC = () => {
         )}
       </AnimatePresence>
 
+
       <AnimatePresence>
         {splashDone && renderContent()}
       </AnimatePresence>
+
+      {/* Builder + bubble — outside all glass/motion containers so position:fixed works */}
+      {splashDone && step === 0 && (
+        <Box
+          sx={{
+            position: "fixed",
+            bottom: 0,
+            left: 0,
+            zIndex: 10,
+            pointerEvents: "none",
+            display: "flex",
+            flexDirection: "row",
+            alignItems: "flex-end",
+            gap: 0,
+          }}
+        >
+          {/* Builder character */}
+          <Box
+            component="img"
+            src={BUILDER_URL}
+            alt="Hackathon Helper"
+            sx={{
+              width: { xs: 90, md: 130 },
+              height: "auto",
+              flexShrink: 0,
+            }}
+          />
+
+          {/* Speech bubble — to the right of the builder */}
+          <Box sx={{ position: "relative", mb: "72px", width: "max-content", maxWidth: { xs: 420, md: 680 } }}>
+            {/* Tail pointing left toward the builder */}
+            <Box
+              sx={{
+                position: "absolute",
+                left: -8,
+                bottom: 16,
+                width: 14,
+                height: 14,
+                background: "rgba(255,255,255,0.96)",
+                borderTop: `1px solid ${BLUE_BORDER}`,
+                borderLeft: `1px solid ${BLUE_BORDER}`,
+                transform: "rotate(45deg)",
+              }}
+            />
+            <Box
+              sx={{
+                background: "rgba(255,255,255,0.96)",
+                border: `1px solid ${BLUE_BORDER}`,
+                borderRadius: "12px",
+                px: 2,
+                py: 1.5,
+                boxShadow: "0 4px 16px rgba(30,80,160,0.10)",
+              }}
+            >
+              <Typography
+                variant="caption"
+                sx={{
+                  fontFamily: "'Quicksand', sans-serif",
+                  fontWeight: 700,
+                  color: BLUE,
+                  fontSize: 11,
+                  textTransform: "uppercase",
+                  letterSpacing: "0.08em",
+                  display: "block",
+                  mb: 0.5,
+                }}
+              >
+                Build-a-thon Helper
+              </Typography>
+              <Typography variant="body2" sx={{ color: "#1a2a3a", lineHeight: 1.6, fontSize: 14 }}>
+                Welcome to Build-a-thon! I'll walk you through every step — NDA, TaruviBase intro, and workspace setup. Follow along and you'll be building in no time!
+              </Typography>
+            </Box>
+          </Box>
+        </Box>
+      )}
     </>
   );
 };

@@ -1,15 +1,19 @@
-const CLOUD_API_BASE = "https://api.taruvi.cloud/api/cloud";
+import { taruviClient } from "../taruviClient";
 
-function getToken(): string {
-  return __TARUVI_CLOUD_TOKEN__;
-}
+const APP_SLUG = __TARUVI_APP_SLUG__;
+const SITE_URL = __TARUVI_SITE_URL__;
+const API_KEY = __TARUVI_API_KEY__;
 
-function authHeaders(): Record<string, string> {
-  return {
-    "Content-Type": "application/json",
-    Authorization: `Bearer ${getToken()}`,
-    Accept: "*/*",
-  };
+async function callFunction(slug: string, params: Record<string, unknown>): Promise<Record<string, unknown>> {
+  const res = await taruviClient.httpClient.post<{ status: string; data: Record<string, unknown> | null }>(
+    `api/apps/${APP_SLUG}/functions/${slug}/execute/`,
+    { async: false, params }
+  );
+  const inner = res?.data ?? {};
+  if (inner?.success === false) {
+    throw new Error(String(inner?.message ?? inner?.error ?? "Function returned error"));
+  }
+  return inner;
 }
 
 export interface CreateSiteParams {
@@ -35,61 +39,47 @@ export interface TaruviInvitation {
 }
 
 export async function createTaruviSite(params: CreateSiteParams): Promise<Record<string, unknown>> {
-  const res = await fetch(`${CLOUD_API_BASE}/organizations/${params.orgSlug}/sites/`, {
-    method: "POST",
-    headers: authHeaders(),
-    body: JSON.stringify({
-      name: params.siteName,
-      description: params.description ?? "",
-      organization: params.orgId,
-      environment: params.environment ?? "production",
-      is_primary: false,
-      site_settings: "",
-    }),
+  return callFunction("create-hackathon-site", {
+    site_slug: params.siteName,
+    org_slug: params.orgSlug,
+    org_id: params.orgId,
+    name: params.siteName,
+    description: params.description ?? "",
+    site_environment: params.environment ?? "production",
   });
-
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) {
-    const msg =
-      data?.detail ??
-      (Array.isArray(data?.name) ? data.name[0] : null) ??
-      `API error ${res.status}`;
-    throw new Error(String(msg));
-  }
-  return data;
 }
 
 export async function inviteUserToSite(params: InviteUserParams): Promise<Record<string, unknown>> {
-  const res = await fetch(`${CLOUD_API_BASE}/organizations/${params.orgSlug}/invitations/`, {
-    method: "POST",
-    headers: authHeaders(),
-    body: JSON.stringify({
-      invitee_identifier: params.email,
-      invitation_config: {
-        is_admin: false,
-        group: ["MEMBER"],
-        site: [{ slug: params.siteSlug, permissions: ["view_site", "access_site"] }],
-      },
-    }),
+  return callFunction("invite-hackathon-user", {
+    email: params.email,
+    site_slug: params.siteSlug,
+    org_slug: params.orgSlug,
   });
+}
 
-  const data = await res.json().catch(() => ({}));
+export async function uploadStorageObject(file: File, filename: string): Promise<string> {
+  const form = new FormData();
+  form.append("file", file, filename);
+
+  const res = await fetch(
+    `${SITE_URL}/api/apps/${APP_SLUG}/storage/buckets/storage/objects/`,
+    {
+      method: "POST",
+      headers: { Authorization: `Bearer ${API_KEY}` },
+      body: form,
+    }
+  );
+
   if (!res.ok) {
-    const msg =
-      data?.detail ??
-      (Array.isArray(data?.invitee_identifier) ? data.invitee_identifier[0] : null) ??
-      `API error ${res.status}`;
-    throw new Error(String(msg));
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data?.detail ?? `Upload failed (${res.status})`);
   }
-  return data;
+
+  const encoded = encodeURIComponent(filename);
+  return `${SITE_URL}/api/apps/${APP_SLUG}/storage/buckets/storage/objects/${encoded}`;
 }
 
 export async function listTaruviInvitations(orgSlug: string): Promise<TaruviInvitation[]> {
-  const res = await fetch(`${CLOUD_API_BASE}/organizations/${orgSlug}/invitations/`, {
-    headers: { Authorization: `Bearer ${getToken()}`, Accept: "*/*" },
-  });
-
-  if (!res.ok) throw new Error(`API error ${res.status}`);
-  const data = await res.json().catch(() => ({}));
-  return Array.isArray(data) ? data : (data?.results ?? []);
+  const result = await callFunction("list-hackathon-invitations", { org_slug: orgSlug });
+  return (result?.invitations ?? []) as TaruviInvitation[];
 }

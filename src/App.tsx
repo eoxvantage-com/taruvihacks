@@ -33,8 +33,10 @@ import { useContext, useRef, useEffect } from "react";
 import { Home } from "./pages/home";
 import { Login } from "./pages/login";
 import { CompaniesList, CompanyShow } from "./pages/companies";
+import { ThemesList } from "./pages/themes";
 import { Onboarding } from "./pages/onboarding";
 import BusinessRoundedIcon from "@mui/icons-material/BusinessRounded";
+import StyleRoundedIcon from "@mui/icons-material/StyleRounded";
 
 // ─── Role helpers ────────────────────────────────────────────────────────────
 const ADMIN_ROLE_SLUGS = new Set([
@@ -117,6 +119,14 @@ const AppContent = () => {
                       canDelete: true,
                     },
                   },
+                  {
+                    name: "themes",
+                    list: "/themes",
+                    meta: {
+                      label: "Themes",
+                      icon: <StyleRoundedIcon />,
+                    },
+                  },
                 ]}
                 options={{
                   syncWithLocation: true,
@@ -172,6 +182,7 @@ const AppContent = () => {
                       <Route index element={<RoleBasedHome />} />
                       <Route path="companies" element={<CompaniesList />} />
                       <Route path="companies/:id" element={<CompanyShow />} />
+                      <Route path="themes" element={<ThemesList />} />
                       <Route path="*" element={<ErrorComponent />} />
                     </Route>
                   </Route>
