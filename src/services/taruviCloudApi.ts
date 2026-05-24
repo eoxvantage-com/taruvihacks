@@ -83,3 +83,7 @@ export async function listTaruviInvitations(orgSlug: string): Promise<TaruviInvi
   const result = await callFunction("list-hackathon-invitations", { org_slug: orgSlug });
   return (result?.invitations ?? []) as TaruviInvitation[];
 }
+
+export async function sendSurveyEmails(companyId: string): Promise<Record<string, unknown>> {
+  return callFunction("send-hackathon-survey-emails", { company_id: companyId });
+}

@@ -51,7 +51,12 @@ import StyleRoundedIcon from "@mui/icons-material/StyleRounded";
 import ImageRoundedIcon from "@mui/icons-material/ImageRounded";
 import KeyRoundedIcon from "@mui/icons-material/KeyRounded";
 import SpeedRoundedIcon from "@mui/icons-material/SpeedRounded";
-import { inviteUserToSite, listTaruviInvitations } from "../../services/taruviCloudApi";
+import EditRoundedIcon from "@mui/icons-material/EditRounded";
+import EventRoundedIcon from "@mui/icons-material/EventRounded";
+import LinkRoundedIcon from "@mui/icons-material/LinkRounded";
+import SendRoundedIcon from "@mui/icons-material/SendRounded";
+import MarkEmailReadRoundedIcon from "@mui/icons-material/MarkEmailReadRounded";
+import { inviteUserToSite, listTaruviInvitations, sendSurveyEmails } from "../../services/taruviCloudApi";
 
 interface Company {
   id: string;
@@ -62,6 +67,10 @@ interface Company {
   site_slug?: string;
   site_environment?: string;
   site_created?: boolean;
+  buildathon_start?: string;
+  buildathon_end?: string;
+  survey_link?: string;
+  survey_sent?: boolean;
   created_at?: string;
 }
 
@@ -135,7 +144,7 @@ export const CompanyShow: React.FC = () => {
   const [activeTab, setActiveTab] = useState(0);
 
   // ── Company ──────────────────────────────────────────────────────────────
-  const { result: company, query: { isLoading: companyLoading } } = useOne<Company>({
+  const { result: company, query: { isLoading: companyLoading, refetch: refetchCompany } } = useOne<Company>({
     resource: "companies",
     id: companyId,
     queryOptions: { enabled: !!companyId },
@@ -292,6 +301,95 @@ export const CompanyShow: React.FC = () => {
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const paginatedRows = invitations.slice(page * rowsPerPage, (page + 1) * rowsPerPage);
 
+  // ── Build-a-thon dates ───────────────────────────────────────────────────
+  const { mutate: updateCompany } = useUpdate();
+  const [datesOpen, setDatesOpen] = useState(false);
+  const [datesStart, setDatesStart] = useState("");
+  const [datesEnd, setDatesEnd] = useState("");
+  const [datesSaving, setDatesSaving] = useState(false);
+  const [datesError, setDatesError] = useState<string | null>(null);
+
+  const handleDatesOpen = () => {
+    setDatesStart(company?.buildathon_start ? company.buildathon_start.slice(0, 16) : "");
+    setDatesEnd(company?.buildathon_end ? company.buildathon_end.slice(0, 16) : "");
+    setDatesError(null);
+    setDatesOpen(true);
+  };
+
+  const handleDatesSave = () => {
+    if (datesStart && datesEnd && datesEnd <= datesStart) {
+      setDatesError("End date must be after start date.");
+      return;
+    }
+    setDatesSaving(true);
+    setDatesError(null);
+    updateCompany(
+      {
+        resource: "companies",
+        id: companyId,
+        values: {
+          buildathon_start: datesStart ? new Date(datesStart).toISOString() : null,
+          buildathon_end: datesEnd ? new Date(datesEnd).toISOString() : null,
+          updated_at: new Date().toISOString(),
+        },
+      },
+      {
+        onSuccess: () => { setDatesSaving(false); setDatesOpen(false); notify?.({ message: "Build-a-thon dates updated.", type: "success" }); },
+        onError: () => { setDatesSaving(false); setDatesError("Failed to save dates. Please try again."); },
+      }
+    );
+  };
+
+  // ── Survey link ──────────────────────────────────────────────────────────
+  const [surveyOpen, setSurveyOpen] = useState(false);
+  const [surveyInput, setSurveyInput] = useState("");
+  const [surveySaving, setSurveySaving] = useState(false);
+  const [surveyError, setSurveyError] = useState<string | null>(null);
+
+  const handleSurveyOpen = () => {
+    setSurveyInput(company?.survey_link ?? "");
+    setSurveyError(null);
+    setSurveyOpen(true);
+  };
+
+  const handleSurveySave = () => {
+    const trimmed = surveyInput.trim();
+    if (trimmed && !/^https?:\/\/.+/.test(trimmed)) {
+      setSurveyError("Please enter a valid URL starting with http:// or https://");
+      return;
+    }
+    setSurveySaving(true);
+    setSurveyError(null);
+    updateCompany(
+      {
+        resource: "companies",
+        id: companyId,
+        values: { survey_link: trimmed || null, updated_at: new Date().toISOString() },
+      },
+      {
+        onSuccess: () => { setSurveySaving(false); setSurveyOpen(false); notify?.({ message: "Survey link saved.", type: "success" }); },
+        onError: () => { setSurveySaving(false); setSurveyError("Failed to save. Please try again."); },
+      }
+    );
+  };
+
+  // ── Send survey emails ───────────────────────────────────────────────────
+  const [surveySending, setSurveySending] = useState(false);
+
+  const handleSendSurvey = async () => {
+    if (!companyId) return;
+    setSurveySending(true);
+    try {
+      await sendSurveyEmails(companyId);
+      await refetchCompany();
+      notify?.({ message: "Survey emails sent to all invitees.", type: "success" });
+    } catch (err: unknown) {
+      notify?.({ message: err instanceof Error ? err.message : "Failed to send survey emails.", type: "error" });
+    }
+    setSurveySending(false);
+  };
+
+  // ── Invitations ──────────────────────────────────────────────────────────
   const { mutate: createInvitation } = useCreate();
   const { mutate: deleteInvitation } = useDelete();
   const { mutate: updateInvitation } = useUpdate();
@@ -484,6 +582,89 @@ export const CompanyShow: React.FC = () => {
                     <Typography variant="caption" color="text.disabled" display="block">Created</Typography>
                     <Typography variant="body2">{new Date(company.created_at).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}</Typography>
                   </Box>
+                )}
+              </Stack>
+
+              {/* Build-a-thon dates */}
+              <Stack direction="row" spacing={0.75} alignItems="center" sx={{ mt: 2 }}>
+                <Box sx={{ px: 1.5, py: 0.75, border: 1, borderColor: "divider", borderRadius: 1.5, bgcolor: "grey.50", display: "flex", alignItems: "center", gap: 2 }}>
+                  <EventRoundedIcon sx={{ fontSize: 16, color: "text.disabled", flexShrink: 0 }} />
+                  <Box>
+                    <Typography variant="caption" color="text.disabled" display="block">Start</Typography>
+                    <Typography variant="body2" fontWeight={600}>
+                      {company?.buildathon_start
+                        ? new Date(company.buildathon_start).toLocaleString("en-US", { month: "short", day: "numeric", year: "numeric", hour: "2-digit", minute: "2-digit" })
+                        : <Typography component="span" variant="body2" color="text.disabled">Not set</Typography>}
+                    </Typography>
+                  </Box>
+                  <Typography color="text.disabled">→</Typography>
+                  <Box>
+                    <Typography variant="caption" color="text.disabled" display="block">End</Typography>
+                    <Typography variant="body2" fontWeight={600}>
+                      {company?.buildathon_end
+                        ? new Date(company.buildathon_end).toLocaleString("en-US", { month: "short", day: "numeric", year: "numeric", hour: "2-digit", minute: "2-digit" })
+                        : <Typography component="span" variant="body2" color="text.disabled">Not set</Typography>}
+                    </Typography>
+                  </Box>
+                </Box>
+                <Tooltip title="Edit build-a-thon dates">
+                  <IconButton size="small" onClick={handleDatesOpen}>
+                    <EditRoundedIcon sx={{ fontSize: 16 }} />
+                  </IconButton>
+                </Tooltip>
+              </Stack>
+
+              {/* Survey link */}
+              <Stack direction="row" spacing={0.75} alignItems="center" sx={{ mt: 1.5 }}>
+                <Box sx={{ px: 1.5, py: 0.75, border: 1, borderColor: "divider", borderRadius: 1.5, bgcolor: "grey.50", display: "flex", alignItems: "center", gap: 1.5, minWidth: 0 }}>
+                  <LinkRoundedIcon sx={{ fontSize: 16, color: "text.disabled", flexShrink: 0 }} />
+                  <Box sx={{ minWidth: 0 }}>
+                    <Typography variant="caption" color="text.disabled" display="block">Survey</Typography>
+                    {company?.survey_link ? (
+                      <Typography
+                        component="a"
+                        href={company.survey_link}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        variant="body2"
+                        fontWeight={600}
+                        sx={{ color: "primary.main", textDecoration: "none", "&:hover": { textDecoration: "underline" }, display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 320 }}
+                      >
+                        {company.survey_link}
+                      </Typography>
+                    ) : (
+                      <Typography variant="body2" color="text.disabled">Not set</Typography>
+                    )}
+                  </Box>
+                </Box>
+                <Tooltip title="Edit survey link">
+                  <IconButton size="small" onClick={handleSurveyOpen}>
+                    <EditRoundedIcon sx={{ fontSize: 16 }} />
+                  </IconButton>
+                </Tooltip>
+                {company?.survey_sent ? (
+                  <Chip
+                    icon={<MarkEmailReadRoundedIcon sx={{ fontSize: 14 }} />}
+                    label="Sent"
+                    color="success"
+                    size="small"
+                    sx={{ fontWeight: 600 }}
+                  />
+                ) : (
+                  <Tooltip title={!company?.survey_link ? "Add a survey link first" : "Send survey email to all invitees"}>
+                    <span>
+                      <Button
+                        size="small"
+                        variant="outlined"
+                        startIcon={surveySending ? <CircularProgress size={13} color="inherit" /> : <SendRoundedIcon sx={{ fontSize: 14 }} />}
+                        disabled={!company?.survey_link || surveySending}
+                        onClick={handleSendSurvey}
+                        sx={{ height: 30, fontSize: 12 }}
+                      >
+                        {surveySending ? "Sending…" : "Send Survey"}
+                      </Button>
+                    </span>
+                  </Tooltip>
                 )}
               </Stack>
             </Box>
@@ -814,6 +995,76 @@ export const CompanyShow: React.FC = () => {
           <Button variant="outlined" onClick={handleCsvClose} disabled={csvSubmitting}>Cancel</Button>
           <Button variant="contained" onClick={handleCsvImport} disabled={csvEmails.length === 0 || csvSubmitting} startIcon={csvSubmitting ? <CircularProgress size={14} color="inherit" /> : <UploadFileRoundedIcon />}>
             {csvSubmitting ? `Importing (${csvProgress}%)…` : `Import ${csvEmails.length} User(s)`}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* ── Survey link dialog ──────────────────────────────────────────── */}
+      <Dialog open={surveyOpen} onClose={() => !surveySaving && setSurveyOpen(false)} maxWidth="xs" fullWidth>
+        <DialogTitle>Survey Link</DialogTitle>
+        <DialogContent>
+          <Stack spacing={2} sx={{ mt: 0.5 }}>
+            {surveyError && <Alert severity="error">{surveyError}</Alert>}
+            <TextField
+              label="Survey URL"
+              type="url"
+              fullWidth
+              autoFocus
+              placeholder="https://forms.example.com/survey"
+              value={surveyInput}
+              onChange={(e) => setSurveyInput(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter") handleSurveySave(); }}
+              helperText="Leave blank to remove the survey link"
+            />
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button variant="outlined" onClick={() => setSurveyOpen(false)} disabled={surveySaving}>Cancel</Button>
+          <Button
+            variant="contained"
+            onClick={handleSurveySave}
+            disabled={surveySaving}
+            startIcon={surveySaving ? <CircularProgress size={14} color="inherit" /> : undefined}
+          >
+            {surveySaving ? "Saving…" : "Save"}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* ── Build-a-thon dates dialog ───────────────────────────────────── */}
+      <Dialog open={datesOpen} onClose={() => !datesSaving && setDatesOpen(false)} maxWidth="xs" fullWidth>
+        <DialogTitle>Build-a-thon Dates</DialogTitle>
+        <DialogContent>
+          <Stack spacing={2.5} sx={{ mt: 0.5 }}>
+            {datesError && <Alert severity="error">{datesError}</Alert>}
+            <TextField
+              label="Start Date & Time"
+              type="datetime-local"
+              fullWidth
+              value={datesStart}
+              onChange={(e) => setDatesStart(e.target.value)}
+              InputLabelProps={{ shrink: true }}
+            />
+            <TextField
+              label="End Date & Time"
+              type="datetime-local"
+              fullWidth
+              value={datesEnd}
+              onChange={(e) => setDatesEnd(e.target.value)}
+              InputLabelProps={{ shrink: true }}
+              inputProps={{ min: datesStart || undefined }}
+            />
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button variant="outlined" onClick={() => setDatesOpen(false)} disabled={datesSaving}>Cancel</Button>
+          <Button
+            variant="contained"
+            onClick={handleDatesSave}
+            disabled={datesSaving}
+            startIcon={datesSaving ? <CircularProgress size={14} color="inherit" /> : undefined}
+          >
+            {datesSaving ? "Saving…" : "Save Dates"}
           </Button>
         </DialogActions>
       </Dialog>
