@@ -1211,7 +1211,7 @@ function CodespaceStep({
   const hasEnv = !!(siteUrl && registeredAppSlug && registeredApiKey);
   const alreadyRegistered = !!(registeredAppSlug && !registeredApiKey);
   const envBlock = hasEnv
-    ? `VITE_TARUVI_BASE_URL=${siteUrl}\nVITE_TARUVI_APP_SLUG=${registeredAppSlug}\nVITE_TARUVI_API_KEY=${registeredApiKey}`
+    ? `TARUVI_SITE_URL=${siteUrl}\nTARUVI_APP_SLUG=${registeredAppSlug}\nTARUVI_API_KEY=${registeredApiKey}`
     : "";
 
   const handleCopy = () => {
