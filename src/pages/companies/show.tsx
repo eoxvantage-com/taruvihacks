@@ -56,7 +56,7 @@ import EventRoundedIcon from "@mui/icons-material/EventRounded";
 import LinkRoundedIcon from "@mui/icons-material/LinkRounded";
 import SendRoundedIcon from "@mui/icons-material/SendRounded";
 import MarkEmailReadRoundedIcon from "@mui/icons-material/MarkEmailReadRounded";
-import { inviteUserToSite, listTaruviInvitations, sendSurveyEmails } from "../../services/taruviCloudApi";
+import { inviteUserToSite, listTaruviInvitations, sendSurveyEmails, storeProviderKey } from "../../services/taruviCloudApi";
 
 interface Company {
   id: string;
@@ -83,6 +83,9 @@ interface Invitation {
   nda_signed?: boolean;
   nda_signed_at?: string;
   invited_at?: string;
+  participant_app_slug?: string;
+  provider_sync_status?: string;
+  provider_synced_at?: string;
 }
 
 interface Theme {
@@ -102,7 +105,8 @@ interface Provider {
   id: string;
   company_id: string;
   provider_type: string;
-  api_key: string;
+  secret_key_ref?: string;
+  key_last4?: string;
   capacity_total: number;
   capacity_remaining: number;
   created_at?: string;
@@ -112,11 +116,6 @@ const PROVIDER_OPTIONS = [
   { value: "claude", label: "Claude (Anthropic)" },
   { value: "codex", label: "Codex (OpenAI)" },
 ];
-
-function maskKey(key: string): string {
-  if (!key || key.length < 8) return "••••••••";
-  return key.slice(0, 4) + "••••••••" + key.slice(-4);
-}
 
 function StatusChip({ status }: { status?: string }) {
   const s = (status ?? "pending").toLowerCase();
@@ -225,7 +224,6 @@ export const CompanyShow: React.FC = () => {
   });
   const providers: Provider[] = providersResult?.data ?? [];
 
-  const { mutate: createProvider } = useCreate();
   const { mutate: deleteProvider } = useDelete();
   const { mutate: updateProvider } = useUpdate();
 
@@ -245,34 +243,26 @@ export const CompanyShow: React.FC = () => {
     setProviderError(null);
   };
 
-  const handleProviderSubmit = () => {
-    if (!providerApiKey.trim() || !providerCapacity) return;
+  const handleProviderSubmit = async () => {
+    const key = providerApiKey.trim();
+    if (!key || !providerCapacity) return;
     setProviderSubmitting(true);
     setProviderError(null);
-    createProvider(
-      {
-        resource: "providers",
-        values: {
-          company_id: companyId,
-          provider_type: providerType,
-          api_key: providerApiKey.trim(),
-          capacity_total: Number(providerCapacity),
-          capacity_remaining: Number(providerCapacity),
-          created_at: new Date().toISOString(),
-        },
-      },
-      {
-        onSuccess: () => {
-          setProviderSubmitting(false);
-          handleProviderClose();
-          notify?.({ message: "Provider added.", type: "success" });
-        },
-        onError: () => {
-          setProviderSubmitting(false);
-          setProviderError("Failed to save provider. Please try again.");
-        },
-      }
-    );
+    try {
+      await storeProviderKey({
+        companyId,
+        providerType,
+        apiKey: key,
+        capacity: Number(providerCapacity),
+      });
+      handleProviderClose();
+      notify?.({ message: "Provider added.", type: "success" });
+      providersQuery.refetch();
+    } catch (err: unknown) {
+      setProviderError(err instanceof Error ? err.message : "Failed to save provider. Please try again.");
+    } finally {
+      setProviderSubmitting(false);
+    }
   };
 
   const handleDeleteProvider = (providerId: string, type: string) => {
@@ -727,6 +717,7 @@ export const CompanyShow: React.FC = () => {
                   <TableCell>Email</TableCell>
                   <TableCell>Invite Status</TableCell>
                   <TableCell>NDA</TableCell>
+                  <TableCell>App</TableCell>
                   <TableCell>Invited</TableCell>
                   <TableCell align="right" />
                 </TableRow>
@@ -734,7 +725,7 @@ export const CompanyShow: React.FC = () => {
               <TableBody>
                 {paginatedRows.length === 0 && !invitationsQuery.isLoading && (
                   <TableRow>
-                    <TableCell colSpan={5} align="center" sx={{ py: 6 }}>
+                    <TableCell colSpan={6} align="center" sx={{ py: 6 }}>
                       <Typography color="text.secondary" variant="body2">No users yet. Invite someone to get started.</Typography>
                     </TableCell>
                   </TableRow>
@@ -747,6 +738,13 @@ export const CompanyShow: React.FC = () => {
                       {inv.nda_signed
                         ? <Chip label="Signed" color="success" size="small" />
                         : <Chip label="Not Signed" sx={{ bgcolor: "#00acc1", color: "#fff" }} size="small" />}
+                    </TableCell>
+                    <TableCell>
+                      {inv.provider_sync_status === "synced"
+                        ? <Tooltip title={inv.participant_app_slug ?? ""}><Chip label="Registered" color="success" size="small" /></Tooltip>
+                        : inv.provider_sync_status === "error"
+                        ? <Chip label="Error" color="error" size="small" />
+                        : <Chip label="Pending" color="default" size="small" />}
                     </TableCell>
                     <TableCell>
                       <Typography variant="body2" color="text.secondary">
@@ -866,10 +864,42 @@ export const CompanyShow: React.FC = () => {
                 AI provider credentials and Codespace capacity
               </Typography>
             </Box>
-            <Button variant="contained" size="small" startIcon={<AddRoundedIcon />} onClick={() => setProviderOpen(true)}>
+            <Button
+              variant="contained"
+              size="small"
+              startIcon={<AddRoundedIcon />}
+              onClick={() => setProviderOpen(true)}
+            >
               Add Provider
             </Button>
           </Stack>
+
+          {company?.site_slug && (
+            <Alert severity="info" variant="outlined" sx={{ mb: 2.5 }}>
+              <Typography variant="body2" fontWeight={700} sx={{ mb: 0.5 }}>
+                Site key setup required for participant registration
+              </Typography>
+              <Typography variant="body2">
+                Before participants can register their apps at onboarding step 6, store a permanent site-level API key for{" "}
+                <strong>{company.site_slug}.taruvi.cloud</strong> in hackathonapp secrets as{" "}
+                <Box component="code" sx={{ fontFamily: "monospace", fontSize: 12, bgcolor: "info.50", px: 0.75, py: 0.25, borderRadius: 0.75 }}>
+                  {company.site_slug}_site_key
+                </Box>.
+                {" "}To get the key: log in to{" "}
+                <Typography
+                  component="a"
+                  variant="body2"
+                  href={`https://${company.site_slug}.taruvi.cloud`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  sx={{ color: "info.main", fontWeight: 600 }}
+                >
+                  {company.site_slug}.taruvi.cloud
+                </Typography>{" "}
+                → Settings → API Keys → create a permanent key.
+              </Typography>
+            </Alert>
+          )}
 
           {providersQuery.isLoading && <LinearProgress sx={{ mb: 2 }} />}
 
@@ -893,11 +923,11 @@ export const CompanyShow: React.FC = () => {
                         {low && <Chip label="Low capacity" size="small" color="error" />}
                       </Stack>
 
-                      {/* Auth key */}
+                      {/* Auth key — last 4 chars only; raw key never leaves server */}
                       <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1.5 }}>
                         <KeyRoundedIcon sx={{ fontSize: 15, color: "text.disabled" }} />
                         <Typography variant="body2" sx={{ fontFamily: "monospace", color: "text.secondary" }}>
-                          {maskKey(p.api_key)}
+                          {p.key_last4 ? `••••••••${p.key_last4}` : "••••••••"}
                         </Typography>
                       </Stack>
 
@@ -1075,6 +1105,17 @@ export const CompanyShow: React.FC = () => {
         <DialogContent>
           <Stack spacing={2.5} sx={{ mt: 0.5 }}>
             {providerError && <Alert severity="error">{providerError}</Alert>}
+            {company?.site_slug && (
+              <Alert severity="info" sx={{ py: 0.75 }}>
+                <Typography variant="caption">
+                  Ensure{" "}
+                  <Box component="code" sx={{ fontFamily: "monospace", fontSize: 11 }}>
+                    {company.site_slug}_site_key
+                  </Box>{" "}
+                  is stored in hackathonapp secrets before participants register.
+                </Typography>
+              </Alert>
+            )}
             <FormControl fullWidth size="small">
               <InputLabel>Provider</InputLabel>
               <Select label="Provider" value={providerType} onChange={(e) => setProviderType(e.target.value)}>
