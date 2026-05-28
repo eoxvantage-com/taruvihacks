@@ -1108,6 +1108,14 @@ function RegisterAppStep({
           <Typography variant="body2" color="text.secondary">
             Your AI credentials are set up. Your Codespace will have access automatically.
           </Typography>
+          <Button
+            variant="text"
+            size="small"
+            sx={{ mt: 2, color: "text.secondary", fontSize: 12 }}
+            onClick={() => { setSynced(false); setAppSlug(""); setAppApiKey(""); setSyncError(null); }}
+          >
+            Register a different app
+          </Button>
         </Box>
       ) : (
         <Box sx={{ ...glass, borderRadius: "16px", p: 3.5, mb: 3 }}>
