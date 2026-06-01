@@ -382,11 +382,16 @@ export const CompaniesList: React.FC = () => {
                           <OpenInNewRoundedIcon sx={{ fontSize: 13 }} />
                         </IconButton>
                       </>,
-                      <>Go to <strong>Settings → API Keys</strong> and create a permanent key</>,
-                      <>Store the key in hackathonapp secrets as:{" "}
+                      <>Go to <strong>Settings → API Tokens</strong> → click <strong>Create New Token</strong> → name it anything → click <strong>Generate</strong> → copy the value</>,
+                      <>Go to{" "}
+                        <Typography component="a" variant="body2" href="https://hackathonsite.taruvi.cloud" target="_blank" rel="noopener noreferrer" sx={{ color: "inherit", fontWeight: 700 }}>
+                          hackathonsite.taruvi.cloud
+                        </Typography>{" "}
+                        → open <strong>hackathonapp</strong> → click <strong>Secrets</strong> in the sidebar → <strong>Create Secret</strong> → name it{" "}
                         <Box component="code" sx={{ fontFamily: "monospace", fontSize: 12, bgcolor: "warning.50", px: 0.75, py: 0.25, borderRadius: 0.75 }}>
                           {createdSiteSlug}_site_key
                         </Box>
+                        {" "}→ select <strong>API Token</strong> as the Secret Type → paste the value → <strong>Save</strong>
                       </>,
                     ].map((step, i) => (
                       <Stack key={i} direction="row" spacing={1.25} alignItems="flex-start">

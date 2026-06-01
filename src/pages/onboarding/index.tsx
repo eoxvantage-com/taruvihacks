@@ -1355,7 +1355,7 @@ function CodespaceStep({
           <Collapse in={envOpen}>
             <Box sx={{ px: 3, pb: 2.5 }}>
               <Typography variant="caption" color="text.secondary" sx={{ display: "block", mb: 1.5, lineHeight: 1.6 }}>
-                When the Codespace opens, click <strong>⚙️ Setup .env</strong> in the status bar, paste these three values, then save. Then click <strong>🔑 Connect Codex</strong> — the AI provider key is fetched automatically.
+                When the Codespace opens, click <strong>⚙️ Setup .env</strong> in the status bar, paste these three values, then save. Then click <strong>🔑 Connect Codex</strong> — this completes your Codex integration with the Taruvi platform's MCP context.
               </Typography>
 
               <Box sx={{ position: "relative" }}>
@@ -1545,31 +1545,38 @@ export const Onboarding: React.FC = () => {
   });
 
   const allInvitations = invitationsResult?.data ?? [];
+
+  // Fetch companies for all invitations so we can filter out deleted ones.
+  const pickerCompanyIds = allInvitations.map((i) => i.company_id).filter(Boolean);
+  const { result: pickerCompaniesResult } = useList<Company>({
+    resource: "companies",
+    filters: pickerCompanyIds.length > 0
+      ? [{ field: "id", operator: "in" as const, value: pickerCompanyIds }]
+      : [],
+    pagination: { pageSize: 50 },
+    queryOptions: { enabled: pickerCompanyIds.length > 0 },
+  });
+  const pickerCompanyMap: Record<string, Company> = {};
+  for (const c of (pickerCompaniesResult?.data ?? [])) {
+    pickerCompanyMap[c.id] = c;
+  }
+
+  // Only show invitations whose company still exists — filters out deleted companies.
+  const existingCompanyIds = new Set(Object.keys(pickerCompanyMap));
+  const validInvitations = pickerCompanyIds.length > 0 && pickerCompaniesResult
+    ? allInvitations.filter((i) => existingCompanyIds.has(i.company_id))
+    : allInvitations;
+
   const invitation = selectedInvitationId
-    ? (allInvitations.find((i) => i.id === selectedInvitationId) ?? allInvitations[0])
-    : allInvitations[0];
-  const needsPicker = allInvitations.length > 1 && !selectedInvitationId;
+    ? (validInvitations.find((i) => i.id === selectedInvitationId) ?? validInvitations[0])
+    : validInvitations[0];
+  const needsPicker = validInvitations.length > 1 && !selectedInvitationId;
 
   useEffect(() => {
     if (invitation?.provider_sync_status === "synced" && invitation.participant_app_slug && !registeredAppSlug) {
       setRegisteredAppSlug(invitation.participant_app_slug);
     }
   }, [invitation?.provider_sync_status, invitation?.participant_app_slug]);
-
-  // Fetch company names for the picker — only runs when there are multiple invitations
-  const pickerCompanyIds = allInvitations.map((i) => i.company_id).filter(Boolean);
-  const { result: pickerCompaniesResult } = useList<Company>({
-    resource: "companies",
-    filters: pickerCompanyIds.length > 1
-      ? [{ field: "id", operator: "in" as const, value: pickerCompanyIds }]
-      : [],
-    pagination: { pageSize: 50 },
-    queryOptions: { enabled: pickerCompanyIds.length > 1 },
-  });
-  const pickerCompanyMap: Record<string, Company> = {};
-  for (const c of (pickerCompaniesResult?.data ?? [])) {
-    pickerCompanyMap[c.id] = c;
-  }
 
   const { result: company } = useOne<Company>({
     resource: "companies",
@@ -1686,7 +1693,7 @@ export const Onboarding: React.FC = () => {
     if (needsPicker) {
       return (
         <HackathonPickerScreen
-          invitations={allInvitations}
+          invitations={validInvitations}
           companyMap={pickerCompanyMap}
           onSelect={setSelectedInvitationId}
         />
