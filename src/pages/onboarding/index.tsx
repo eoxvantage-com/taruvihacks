@@ -8,6 +8,9 @@ import {
   Chip,
   Checkbox,
   FormControlLabel,
+  Alert,
+  Collapse,
+  IconButton,
 } from "@mui/material";
 import {
   useGetIdentity,
@@ -21,7 +24,11 @@ import ArrowForwardRoundedIcon from "@mui/icons-material/ArrowForwardRounded";
 import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
 import OpenInNewRoundedIcon from "@mui/icons-material/OpenInNewRounded";
 import ChevronRightRoundedIcon from "@mui/icons-material/ChevronRightRounded";
+import ExpandMoreRoundedIcon from "@mui/icons-material/ExpandMoreRounded";
+import ContentCopyRoundedIcon from "@mui/icons-material/ContentCopyRounded";
 import GitHubIcon from "@mui/icons-material/GitHub";
+import { syncParticipantProviderSecret } from "../../services/taruviCloudApi";
+
 // ─── Logo ────────────────────────────────────────────────────────────────────
 // Storage bucket is public — direct URL, no auth needed.
 const LOGO_URL =
@@ -296,6 +303,8 @@ interface Invitation {
   email: string;
   site_slug: string;
   invite_status?: string;
+  participant_app_slug?: string;
+  provider_sync_status?: string;
 }
 
 interface Company {
@@ -1128,7 +1137,221 @@ function CreateApiStep({
   );
 }
 
-// ─── Step 4 — Codespace ─────────────────────────────────────────────────────
+// ─── Step 6 — Register App / Configure Codex ────────────────────────────────
+function RegisterAppStep({
+  name,
+  invitation,
+  onNext,
+  onSuccess,
+}: {
+  name: string;
+  invitation: { id: string; site_slug: string; participant_app_slug?: string; provider_sync_status?: string } | undefined;
+  onNext: () => void;
+  onSuccess: (appSlug: string, apiKey: string) => void;
+}) {
+  const alreadySynced = invitation?.provider_sync_status === "synced";
+  const [appSlug, setAppSlug] = useState(invitation?.participant_app_slug ?? "");
+  const [appApiKey, setAppApiKey] = useState("");
+  const [syncing, setSyncing] = useState(false);
+  const [synced, setSynced] = useState(alreadySynced);
+  const [syncError, setSyncError] = useState<string | null>(null);
+
+  const siteUrl = invitation?.site_slug ? `https://${invitation.site_slug}.taruvi.cloud` : null;
+
+  const handleRegister = async () => {
+    const slug = appSlug.trim();
+    const key = appApiKey.trim();
+    if (!slug || !key || !invitation || !siteUrl) return;
+    setSyncing(true);
+    setSyncError(null);
+    try {
+      await syncParticipantProviderSecret({
+        invitationId: invitation.id,
+        participantAppSlug: slug,
+        participantApiKey: key,
+        participantSiteUrl: siteUrl,
+      });
+      onSuccess(slug, key);
+      setSynced(true);
+    } catch (err: unknown) {
+      setSyncError(
+        err instanceof Error
+          ? err.message
+          : "Configuration failed. Check your app slug and API key, then try again."
+      );
+    } finally {
+      setSyncing(false);
+    }
+  };
+
+  const inputStyle: React.CSSProperties = {
+    width: "100%",
+    padding: "10px 14px",
+    fontSize: 14,
+    fontFamily: "monospace",
+    border: `1px solid rgba(0,0,0,0.18)`,
+    borderRadius: 10,
+    background: "rgba(255,255,255,0.8)",
+    outline: "none",
+    boxSizing: "border-box",
+  };
+
+  return (
+    <Box>
+      <Typography
+        variant="h4"
+        sx={{ fontFamily: "'Quicksand', sans-serif", fontWeight: 700, mb: 0.75 }}
+      >
+        Register Your App
+      </Typography>
+
+      <HelperMessage>
+        Almost there, {name}! Paste in your app slug and the API key you generated in the previous step. This lets the platform configure your AI credentials automatically — no manual key entry needed in your Codespace.
+      </HelperMessage>
+
+      {siteUrl && (
+        <Box
+          sx={{
+            ...glassBlue,
+            borderRadius: "16px",
+            p: 3,
+            mb: 3.5,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: 2,
+            flexWrap: "wrap",
+          }}
+        >
+          <Box>
+            <Label>Your Site Console</Label>
+            <Typography
+              sx={{
+                fontFamily: "monospace",
+                fontSize: { xs: 13, sm: 16 },
+                fontWeight: 600,
+                color: "#003652",
+                wordBreak: "break-all",
+                mt: 0.5,
+              }}
+            >
+              {siteUrl}
+            </Typography>
+          </Box>
+          <Button
+            variant="outlined"
+            size="small"
+            endIcon={<OpenInNewRoundedIcon />}
+            href={siteUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            sx={{ flexShrink: 0 }}
+          >
+            Open Console
+          </Button>
+        </Box>
+      )}
+
+      {synced ? (
+        <Box sx={{ ...glassBlue, borderRadius: "16px", p: 4, textAlign: "center", mb: 3.5 }}>
+          <CheckCircleRoundedIcon
+            sx={{ fontSize: 52, color: "#2e7d32", mb: 1.5, display: "block", mx: "auto" }}
+          />
+          <Typography
+            variant="h6"
+            sx={{ fontFamily: "'Quicksand', sans-serif", fontWeight: 700, mb: 0.75 }}
+          >
+            Credentials Configured!
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            Your AI credentials are set up. Your Codespace will have access automatically.
+          </Typography>
+          <Button
+            variant="text"
+            size="small"
+            sx={{ mt: 2, color: "text.secondary", fontSize: 12 }}
+            onClick={() => { setSynced(false); setAppSlug(""); setAppApiKey(""); setSyncError(null); }}
+          >
+            Register a different app
+          </Button>
+        </Box>
+      ) : (
+        <Box sx={{ ...glass, borderRadius: "16px", p: 3.5, mb: 3 }}>
+          <Stack spacing={2.5}>
+            {syncError && (
+              <Box
+                sx={{
+                  bgcolor: "rgba(211,47,47,0.08)",
+                  border: "1px solid rgba(211,47,47,0.22)",
+                  borderRadius: "12px",
+                  p: 2,
+                }}
+              >
+                <Typography variant="body2" sx={{ color: "#c62828" }}>
+                  {syncError}
+                </Typography>
+              </Box>
+            )}
+
+            <Box>
+              <Label>App Slug</Label>
+              <input
+                style={inputStyle}
+                placeholder="my-app"
+                value={appSlug}
+                onChange={(e) => setAppSlug(e.target.value)}
+                disabled={syncing}
+              />
+              <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: "block" }}>
+                Found in your app's Settings → Connect page
+              </Typography>
+            </Box>
+
+            <Box>
+              <Label>API Key</Label>
+              <input
+                style={inputStyle}
+                type="password"
+                placeholder="taruvi_..."
+                value={appApiKey}
+                onChange={(e) => setAppApiKey(e.target.value)}
+                disabled={syncing}
+              />
+              <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: "block" }}>
+                Generated from Settings → Connect → Generate API Key
+              </Typography>
+            </Box>
+
+            <Button
+              variant="contained"
+              size="large"
+              disabled={!appSlug.trim() || !appApiKey.trim() || syncing || !invitation}
+              onClick={handleRegister}
+              startIcon={syncing ? <CircularProgress size={16} color="inherit" /> : undefined}
+              sx={{ px: 4, alignSelf: "flex-start" }}
+            >
+              {syncing ? "Configuring…" : "Register App"}
+            </Button>
+          </Stack>
+        </Box>
+      )}
+
+      {synced && (
+        <Button
+          variant="contained"
+          size="large"
+          endIcon={<ArrowForwardRoundedIcon />}
+          onClick={onNext}
+          sx={{ px: 4 }}
+        >
+          Continue
+        </Button>
+      )}
+    </Box>
+  );
+}
+
+// ─── Step 7 — Codespace ─────────────────────────────────────────────────────
 const CODESPACE_FEATURES = [
   "Node.js pre-installed",
   "Taruvi SDK ready",
@@ -1136,7 +1359,35 @@ const CODESPACE_FEATURES = [
   "Instant cloud IDE",
 ];
 
-function CodespaceStep({ name, siteSlug }: { name: string; siteSlug?: string }) {
+function CodespaceStep({
+  name,
+  siteSlug,
+  registeredAppSlug,
+  registeredApiKey,
+}: {
+  name: string;
+  siteSlug?: string;
+  registeredAppSlug?: string;
+  registeredApiKey?: string;
+}) {
+  const [envOpen, setEnvOpen] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  const siteUrl = siteSlug ? `https://${siteSlug}.taruvi.cloud` : "";
+  const hasEnv = !!(siteUrl && registeredAppSlug && registeredApiKey);
+  const alreadyRegistered = !!(registeredAppSlug && !registeredApiKey);
+  const envBlock = hasEnv
+    ? `TARUVI_SITE_URL=${siteUrl}\nTARUVI_APP_SLUG=${registeredAppSlug}\nTARUVI_API_KEY=${registeredApiKey}`
+    : "";
+
+  const handleCopy = () => {
+    if (!envBlock) return;
+    navigator.clipboard.writeText(envBlock).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  };
+
   return (
     <Box sx={{ py: 2 }}>
       {/* GitHub icon */}
@@ -1205,13 +1456,112 @@ function CodespaceStep({ name, siteSlug }: { name: string; siteSlug?: string }) 
         rel="noopener noreferrer"
         startIcon={<GitHubIcon />}
         endIcon={<OpenInNewRoundedIcon sx={{ fontSize: 16 }} />}
-        sx={{ px: 4, py: 1.25, fontSize: 15, mb: 2 }}
+        sx={{ px: 4, py: 1.25, fontSize: 15, mb: 3 }}
       >
         Open in GitHub Codespace
       </Button>
 
+      {/* Already registered in a prior session */}
+      {alreadyRegistered && (
+        <Alert severity="success" sx={{ mb: 3, borderRadius: "12px" }}>
+          Your AI credentials were configured in a previous session for app <strong>{registeredAppSlug}</strong>. If you need your Taruvi connection values, open your app → Settings → Connect.
+        </Alert>
+      )}
+
+      {/* Env values accordion — only shown when fresh registration just completed */}
+      {hasEnv && (
+        <Box
+          sx={{
+            ...glassBlue,
+            borderRadius: "16px",
+            overflow: "hidden",
+            mb: 2,
+          }}
+        >
+          <Box
+            onClick={() => setEnvOpen((o) => !o)}
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              px: 3,
+              py: 2,
+              cursor: "pointer",
+              userSelect: "none",
+            }}
+          >
+            <Typography
+              sx={{
+                fontFamily: "'Quicksand', sans-serif",
+                fontWeight: 700,
+                fontSize: 14,
+                color: BLUE,
+              }}
+            >
+              Your environment values
+            </Typography>
+            <ExpandMoreRoundedIcon
+              sx={{
+                color: BLUE,
+                fontSize: 22,
+                transform: envOpen ? "rotate(180deg)" : "rotate(0deg)",
+                transition: "transform 0.2s",
+              }}
+            />
+          </Box>
+
+          <Collapse in={envOpen}>
+            <Box sx={{ px: 3, pb: 2.5 }}>
+              <Typography variant="caption" color="text.secondary" sx={{ display: "block", mb: 1.5, lineHeight: 1.6 }}>
+                When the Codespace opens, click <strong>⚙️ Setup .env</strong> in the status bar, paste these three values, then save. Then click <strong>🔑 Connect Codex</strong> — this completes your Codex integration with the Taruvi platform's MCP context.
+              </Typography>
+
+              <Box sx={{ position: "relative" }}>
+                <Box
+                  component="pre"
+                  sx={{
+                    fontFamily: "monospace",
+                    fontSize: 12.5,
+                    lineHeight: 1.9,
+                    bgcolor: "rgba(255,255,255,0.7)",
+                    border: `1px solid ${BLUE_BORDER}`,
+                    borderRadius: "10px",
+                    p: 2,
+                    m: 0,
+                    whiteSpace: "pre-wrap",
+                    wordBreak: "break-all",
+                    color: "#003652",
+                    pr: 5,
+                  }}
+                >
+                  {envBlock}
+                </Box>
+                <IconButton
+                  size="small"
+                  onClick={handleCopy}
+                  sx={{
+                    position: "absolute",
+                    top: 6,
+                    right: 6,
+                    bgcolor: copied ? "success.light" : "rgba(255,255,255,0.9)",
+                    border: `1px solid ${BLUE_BORDER}`,
+                    "&:hover": { bgcolor: BLUE_LIGHT },
+                  }}
+                >
+                  {copied ? (
+                    <CheckCircleRoundedIcon sx={{ fontSize: 16, color: "success.dark" }} />
+                  ) : (
+                    <ContentCopyRoundedIcon sx={{ fontSize: 16, color: BLUE }} />
+                  )}
+                </IconButton>
+              </Box>
+            </Box>
+          </Collapse>
+        </Box>
+      )}
+
       {siteSlug && (
-        <Box sx={{ mt: 3 }}>
+        <Box sx={{ mt: 1 }}>
           <Typography variant="caption" color="text.disabled">
             Your site console:{" "}
             <a
@@ -1230,13 +1580,94 @@ function CodespaceStep({ name, siteSlug }: { name: string; siteSlug?: string }) 
 }
 
 // ─── Main Onboarding component ───────────────────────────────────────────────
-const TOTAL_STEPS = 7;
+const TOTAL_STEPS = 8;
+
+// ─── Hackathon picker (shown when user has multiple invitations) ────────────
+function HackathonPickerScreen({
+  invitations,
+  companyMap,
+  onSelect,
+}: {
+  invitations: Invitation[];
+  companyMap: Record<string, Company>;
+  onSelect: (id: string) => void;
+}) {
+  return (
+    <Box
+      sx={{
+        minHeight: "calc(100vh - var(--nav-height, 60px))",
+        background: PAGE_BG,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        px: 3,
+      }}
+    >
+      <Box sx={{ ...glass, borderRadius: "24px", p: 5, maxWidth: 560, width: "100%" }}>
+        <Label>Select Hackathon</Label>
+        <Typography
+          variant="h5"
+          sx={{ fontFamily: "'Quicksand', sans-serif", fontWeight: 700, mb: 1 }}
+        >
+          Which hackathon are you setting up?
+        </Typography>
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+          You have invitations to multiple hackathons. Pick the one you'd like to work on now.
+        </Typography>
+        <Stack spacing={1.5}>
+          {invitations.map((inv) => {
+            const co = companyMap[inv.company_id];
+            return (
+              <Box
+                key={inv.id}
+                onClick={() => onSelect(inv.id)}
+                sx={{
+                  ...glassBlue,
+                  borderRadius: "14px",
+                  p: 2.5,
+                  cursor: "pointer",
+                  transition: "box-shadow 0.15s, border-color 0.15s",
+                  "&:hover": {
+                    boxShadow: "0 4px 20px rgba(30,80,160,0.15)",
+                    borderColor: BLUE,
+                  },
+                }}
+              >
+                <Stack direction="row" alignItems="center" justifyContent="space-between">
+                  <Box>
+                    <Typography
+                      sx={{
+                        fontFamily: "'Quicksand', sans-serif",
+                        fontWeight: 700,
+                        fontSize: 16,
+                        color: "#1a2a3a",
+                      }}
+                    >
+                      {co?.name ?? inv.site_slug}
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      {inv.site_slug}
+                    </Typography>
+                  </Box>
+                  <ChevronRightRoundedIcon sx={{ color: BLUE, opacity: 0.7 }} />
+                </Stack>
+              </Box>
+            );
+          })}
+        </Stack>
+      </Box>
+    </Box>
+  );
+}
 
 export const Onboarding: React.FC = () => {
   const { open: notify } = useNotification();
   const [splashDone, setSplashDone] = useState(false);
   const [step, setStep] = useState(0);
   const [dir, setDir] = useState(1);
+  const [selectedInvitationId, setSelectedInvitationId] = useState<string | null>(null);
+  const [registeredAppSlug, setRegisteredAppSlug] = useState<string>("");
+  const [registeredApiKey, setRegisteredApiKey] = useState<string>("");
 
   const { data: identity, isLoading: identityLoading } =
     useGetIdentity<TaruviIdentity>();
@@ -1264,11 +1695,44 @@ export const Onboarding: React.FC = () => {
   const { result: invitationsResult, query: invQuery } = useList<Invitation>({
     resource: "invitations",
     filters: identityFilters,
-    pagination: { pageSize: 1 },
+    sorters: [{ field: "invited_at", order: "desc" as const }],
+    pagination: { pageSize: 50 },
     queryOptions: { enabled: hasIdentity && identityFilters.length > 0 },
   });
 
-  const invitation = invitationsResult?.data?.[0];
+  const allInvitations = invitationsResult?.data ?? [];
+
+  // Fetch companies for all invitations so we can filter out deleted ones.
+  const pickerCompanyIds = allInvitations.map((i) => i.company_id).filter(Boolean);
+  const { result: pickerCompaniesResult } = useList<Company>({
+    resource: "companies",
+    filters: pickerCompanyIds.length > 0
+      ? [{ field: "id", operator: "in" as const, value: pickerCompanyIds }]
+      : [],
+    pagination: { pageSize: 50 },
+    queryOptions: { enabled: pickerCompanyIds.length > 0 },
+  });
+  const pickerCompanyMap: Record<string, Company> = {};
+  for (const c of (pickerCompaniesResult?.data ?? [])) {
+    pickerCompanyMap[c.id] = c;
+  }
+
+  // Only show invitations whose company still exists — filters out deleted companies.
+  const existingCompanyIds = new Set(Object.keys(pickerCompanyMap));
+  const validInvitations = pickerCompanyIds.length > 0 && pickerCompaniesResult
+    ? allInvitations.filter((i) => existingCompanyIds.has(i.company_id))
+    : allInvitations;
+
+  const invitation = selectedInvitationId
+    ? (validInvitations.find((i) => i.id === selectedInvitationId) ?? validInvitations[0])
+    : validInvitations[0];
+  const needsPicker = validInvitations.length > 1 && !selectedInvitationId;
+
+  useEffect(() => {
+    if (invitation?.provider_sync_status === "synced" && invitation.participant_app_slug && !registeredAppSlug) {
+      setRegisteredAppSlug(invitation.participant_app_slug);
+    }
+  }, [invitation?.provider_sync_status, invitation?.participant_app_slug]);
 
   const { result: company } = useOne<Company>({
     resource: "companies",
@@ -1343,6 +1807,17 @@ export const Onboarding: React.FC = () => {
         >
           <CircularProgress />
         </Box>
+      );
+    }
+
+    // Multiple hackathons — let the user choose
+    if (needsPicker) {
+      return (
+        <HackathonPickerScreen
+          invitations={validInvitations}
+          companyMap={pickerCompanyMap}
+          onSelect={setSelectedInvitationId}
+        />
       );
     }
 
@@ -1442,7 +1917,25 @@ export const Onboarding: React.FC = () => {
                     {step === 5 && (
                       <CreateApiStep name={displayName} onNext={goNext} />
                     )}
-                    {step === 6 && <CodespaceStep name={displayName} siteSlug={siteSlug} />}
+                    {step === 6 && (
+                      <RegisterAppStep
+                        name={displayName}
+                        invitation={invitation ? { id: invitation.id, site_slug: invitation.site_slug, participant_app_slug: invitation.participant_app_slug, provider_sync_status: invitation.provider_sync_status } : undefined}
+                        onNext={goNext}
+                        onSuccess={(slug, key) => {
+                          setRegisteredAppSlug(slug);
+                          setRegisteredApiKey(key);
+                        }}
+                      />
+                    )}
+                    {step === 7 && (
+                      <CodespaceStep
+                        name={displayName}
+                        siteSlug={siteSlug}
+                        registeredAppSlug={registeredAppSlug}
+                        registeredApiKey={registeredApiKey}
+                      />
+                    )}
                   </Box>
                 </motion.div>
               </AnimatePresence>

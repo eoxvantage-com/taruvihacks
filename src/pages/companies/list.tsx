@@ -28,7 +28,9 @@ import AddRoundedIcon from "@mui/icons-material/AddRounded";
 import VisibilityRoundedIcon from "@mui/icons-material/VisibilityRounded";
 import DeleteRoundedIcon from "@mui/icons-material/DeleteRounded";
 import BusinessRoundedIcon from "@mui/icons-material/BusinessRounded";
-import { createTaruviSite } from "../../services/taruviCloudApi";
+import CheckCircleRoundedIcon from "@mui/icons-material/CheckCircleRounded";
+import OpenInNewRoundedIcon from "@mui/icons-material/OpenInNewRounded";
+import { createTaruviSite, deleteCompanyInvitations, deleteCompanyProviderSecrets } from "../../services/taruviCloudApi";
 
 interface CompanyFormValues {
   name: string;
@@ -45,6 +47,7 @@ export const CompaniesList: React.FC = () => {
   const [createOpen, setCreateOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
+  const [createdSiteSlug, setCreatedSiteSlug] = useState<string | null>(null);
 
   const { mutate: createRecord } = useCreate();
   const { mutate: deleteRecord } = useDelete();
@@ -76,6 +79,7 @@ export const CompaniesList: React.FC = () => {
     if (submitting) return;
     setCreateOpen(false);
     setCreateError(null);
+    setCreatedSiteSlug(null);
     reset();
   };
 
@@ -117,8 +121,7 @@ export const CompaniesList: React.FC = () => {
         onSuccess: () => {
           setSubmitting(false);
           if (siteCreated) {
-            handleClose();
-            notify?.({ message: "Company and site created successfully.", type: "success" });
+            setCreatedSiteSlug(values.site_slug);
           }
         },
         onError: (err: unknown) => {
@@ -130,8 +133,20 @@ export const CompaniesList: React.FC = () => {
     );
   };
 
-  const handleDelete = (id: string, name: string) => {
-    if (!window.confirm(`Delete company "${name}"? All associated invitations will also be removed.`)) return;
+  const handleDelete = async (id: string, name: string) => {
+    if (!window.confirm(`Delete company "${name}"? Invitations, providers, and themes for this company will also be removed.`)) return;
+    try {
+      await deleteCompanyProviderSecrets(id);
+    } catch {
+      notify?.({ message: "Failed to clean up provider secrets.", type: "error" });
+      return;
+    }
+    try {
+      await deleteCompanyInvitations(id);
+    } catch {
+      notify?.({ message: "Failed to delete company invitations.", type: "error" });
+      return;
+    }
     deleteRecord(
       { resource: "companies", id },
       {
@@ -337,129 +352,194 @@ export const CompaniesList: React.FC = () => {
         maxWidth="sm"
         fullWidth
       >
-        <form onSubmit={handleSubmit(onSubmit)}>
-          <DialogTitle>Add Company</DialogTitle>
-          <DialogContent>
-            <Stack spacing={2.5} sx={{ mt: 0.5 }}>
-              {createError && <Alert severity="warning">{createError}</Alert>}
+        {createdSiteSlug ? (
+          <>
+            <DialogTitle sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
+              <CheckCircleRoundedIcon color="success" />
+              Company Created
+            </DialogTitle>
+            <DialogContent>
+              <Stack spacing={2.5} sx={{ mt: 0.5 }}>
+                <Alert severity="success" variant="outlined">
+                  Site <strong>{createdSiteSlug}.taruvi.cloud</strong> is live and the company record has been saved.
+                </Alert>
 
-              <Typography
-                sx={{
-                  fontFamily: "'Quicksand', sans-serif",
-                  fontSize: 11,
-                  fontWeight: 700,
-                  textTransform: "uppercase",
-                  letterSpacing: "0.08em",
-                  color: "text.disabled",
-                }}
-              >
-                Company Details
-              </Typography>
+                <Alert severity="warning" variant="outlined">
+                  <Typography variant="body2" fontWeight={700} sx={{ mb: 1 }}>
+                    One-time setup required before participants can register
+                  </Typography>
+                  <Typography variant="body2" sx={{ mb: 1.5 }}>
+                    To enable provider key sync for this company's participants, complete these steps:
+                  </Typography>
+                  <Stack spacing={1}>
+                    {[
+                      <>Log in to{" "}
+                        <Typography component="a" variant="body2" href={`https://${createdSiteSlug}.taruvi.cloud`} target="_blank" rel="noopener noreferrer" sx={{ color: "inherit", fontWeight: 700 }}>
+                          {createdSiteSlug}.taruvi.cloud
+                        </Typography>{" "}
+                        as site admin
+                        <IconButton size="small" component="a" href={`https://${createdSiteSlug}.taruvi.cloud`} target="_blank" rel="noopener noreferrer" sx={{ ml: 0.5, p: 0.25 }}>
+                          <OpenInNewRoundedIcon sx={{ fontSize: 13 }} />
+                        </IconButton>
+                      </>,
+                      <>Go to <strong>Settings → API Tokens</strong> → click <strong>Create New Token</strong> → name it anything → click <strong>Generate</strong> → copy the value</>,
+                      <>Go to{" "}
+                        <Typography component="a" variant="body2" href="https://hackathonsite.taruvi.cloud" target="_blank" rel="noopener noreferrer" sx={{ color: "inherit", fontWeight: 700 }}>
+                          hackathonsite.taruvi.cloud
+                        </Typography>{" "}
+                        → open <strong>hackathonapp</strong> → click <strong>Secrets</strong> in the sidebar → <strong>Create Secret</strong> → name it{" "}
+                        <Box component="code" sx={{ fontFamily: "monospace", fontSize: 12, bgcolor: "warning.50", px: 0.75, py: 0.25, borderRadius: 0.75 }}>
+                          {createdSiteSlug}_site_key
+                        </Box>
+                        {" "}→ select <strong>API Token</strong> as the Secret Type → paste the value → <strong>Save</strong>
+                      </>,
+                    ].map((step, i) => (
+                      <Stack key={i} direction="row" spacing={1.25} alignItems="flex-start">
+                        <Box sx={{ width: 20, height: 20, borderRadius: "50%", bgcolor: "warning.main", color: "warning.contrastText", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, mt: 0.1 }}>
+                          <Typography variant="caption" fontWeight={700} sx={{ fontSize: 10, lineHeight: 1 }}>{i + 1}</Typography>
+                        </Box>
+                        <Typography variant="body2">{step}</Typography>
+                      </Stack>
+                    ))}
+                  </Stack>
+                </Alert>
 
-              <TextField
-                label="Company Name"
-                required
-                fullWidth
-                autoFocus
-                error={!!errors.name}
-                helperText={errors.name?.message}
-                {...register("name", { required: "Company name is required" })}
-              />
+                <Typography variant="caption" color="text.secondary">
+                  This setup is required once per company site. Without it, the provider key cannot be synced to participants' apps at onboarding step 6.
+                </Typography>
+              </Stack>
+            </DialogContent>
+            <DialogActions>
+              <Button variant="contained" onClick={handleClose}>
+                Done
+              </Button>
+            </DialogActions>
+          </>
+        ) : (
+          <form onSubmit={handleSubmit(onSubmit)}>
+            <DialogTitle>Add Company</DialogTitle>
+            <DialogContent>
+              <Stack spacing={2.5} sx={{ mt: 0.5 }}>
+                {createError && <Alert severity="warning">{createError}</Alert>}
 
-              <TextField
-                label="Site Slug"
-                required
-                fullWidth
-                placeholder="e.g., acme-corp"
-                error={!!errors.site_slug}
-                helperText={
-                  errors.site_slug?.message ||
-                  "Taruvi site identifier — lowercase letters, numbers, hyphens"
-                }
-                {...register("site_slug", {
-                  required: "Site slug is required",
-                  pattern: {
-                    value: /^[a-z0-9][a-z0-9-]*$/,
-                    message: "Lowercase letters, numbers, and hyphens only",
-                  },
-                })}
-              />
+                <Typography
+                  sx={{
+                    fontFamily: "'Quicksand', sans-serif",
+                    fontSize: 11,
+                    fontWeight: 700,
+                    textTransform: "uppercase",
+                    letterSpacing: "0.08em",
+                    color: "text.disabled",
+                  }}
+                >
+                  Company Details
+                </Typography>
 
-              <TextField
-                label="Description"
-                fullWidth
-                multiline
-                rows={2}
-                {...register("description")}
-              />
-
-              <Typography
-                sx={{
-                  fontFamily: "'Quicksand', sans-serif",
-                  fontSize: 11,
-                  fontWeight: 700,
-                  textTransform: "uppercase",
-                  letterSpacing: "0.08em",
-                  color: "text.disabled",
-                  mt: 0.5,
-                }}
-              >
-                Organization Settings
-              </Typography>
-
-              <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 2 }}>
                 <TextField
-                  label="Org Slug"
+                  label="Company Name"
                   required
-                  error={!!errors.org_slug}
-                  helperText={errors.org_slug?.message || "e.g., hackathon"}
-                  {...register("org_slug", { required: "Required" })}
+                  fullWidth
+                  autoFocus
+                  error={!!errors.name}
+                  helperText={errors.name?.message}
+                  {...register("name", { required: "Company name is required" })}
                 />
+
                 <TextField
-                  label="Org ID"
-                  type="number"
+                  label="Site Slug"
                   required
-                  error={!!errors.org_id}
-                  helperText={errors.org_id?.message}
-                  {...register("org_id", {
-                    required: "Required",
-                    valueAsNumber: true,
-                    min: { value: 1, message: "Must be a positive number" },
+                  fullWidth
+                  placeholder="e.g., acme-corp"
+                  error={!!errors.site_slug}
+                  helperText={
+                    errors.site_slug?.message ||
+                    "Taruvi site identifier — lowercase letters, numbers, hyphens"
+                  }
+                  {...register("site_slug", {
+                    required: "Site slug is required",
+                    pattern: {
+                      value: /^[a-z0-9][a-z0-9-]*$/,
+                      message: "Lowercase letters, numbers, and hyphens only",
+                    },
                   })}
                 />
-              </Box>
 
-              <Controller
-                control={control}
-                name="site_environment"
-                render={({ field }) => (
-                  <FormControl size="small" fullWidth>
-                    <InputLabel>Environment</InputLabel>
-                    <Select label="Environment" {...field}>
-                      <MuiMenuItem value="production">Production</MuiMenuItem>
-                      <MuiMenuItem value="staging">Staging</MuiMenuItem>
-                    </Select>
-                  </FormControl>
-                )}
-              />
-            </Stack>
-          </DialogContent>
-          <DialogActions>
-            <Button variant="outlined" onClick={handleClose} disabled={submitting}>
-              Cancel
-            </Button>
-            <Button
-              type="submit"
-              variant="contained"
-              disabled={submitting}
-              startIcon={
-                submitting ? <CircularProgress size={14} color="inherit" /> : <AddRoundedIcon />
-              }
-            >
-              {submitting ? "Creating…" : "Create Company"}
-            </Button>
-          </DialogActions>
-        </form>
+                <TextField
+                  label="Description"
+                  fullWidth
+                  multiline
+                  rows={2}
+                  {...register("description")}
+                />
+
+                <Typography
+                  sx={{
+                    fontFamily: "'Quicksand', sans-serif",
+                    fontSize: 11,
+                    fontWeight: 700,
+                    textTransform: "uppercase",
+                    letterSpacing: "0.08em",
+                    color: "text.disabled",
+                    mt: 0.5,
+                  }}
+                >
+                  Organization Settings
+                </Typography>
+
+                <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 2 }}>
+                  <TextField
+                    label="Org Slug"
+                    required
+                    error={!!errors.org_slug}
+                    helperText={errors.org_slug?.message || "e.g., hackathon"}
+                    {...register("org_slug", { required: "Required" })}
+                  />
+                  <TextField
+                    label="Org ID"
+                    type="number"
+                    required
+                    error={!!errors.org_id}
+                    helperText={errors.org_id?.message}
+                    {...register("org_id", {
+                      required: "Required",
+                      valueAsNumber: true,
+                      min: { value: 1, message: "Must be a positive number" },
+                    })}
+                  />
+                </Box>
+
+                <Controller
+                  control={control}
+                  name="site_environment"
+                  render={({ field }) => (
+                    <FormControl size="small" fullWidth>
+                      <InputLabel>Environment</InputLabel>
+                      <Select label="Environment" {...field}>
+                        <MuiMenuItem value="production">Production</MuiMenuItem>
+                        <MuiMenuItem value="staging">Staging</MuiMenuItem>
+                      </Select>
+                    </FormControl>
+                  )}
+                />
+              </Stack>
+            </DialogContent>
+            <DialogActions>
+              <Button variant="outlined" onClick={handleClose} disabled={submitting}>
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                variant="contained"
+                disabled={submitting}
+                startIcon={
+                  submitting ? <CircularProgress size={14} color="inherit" /> : <AddRoundedIcon />
+                }
+              >
+                {submitting ? "Creating…" : "Create Company"}
+              </Button>
+            </DialogActions>
+          </form>
+        )}
       </Dialog>
     </Container>
   );

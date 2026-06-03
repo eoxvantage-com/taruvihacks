@@ -194,7 +194,7 @@ export const ThemesList: React.FC = () => {
       {themes.length > 0 && (
         <Grid container spacing={2.5}>
           {themes.map((theme) => (
-            <Grid item xs={12} sm={6} md={4} lg={3} key={theme.id}>
+            <Grid size={{ xs: 12, sm: 6, md: 4, lg: 3 }} key={theme.id}>
               <Card sx={{ height: "100%", display: "flex", flexDirection: "column" }}>
                 {theme.image_url ? (
                   <CardMedia

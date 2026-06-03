@@ -4,6 +4,19 @@ const APP_SLUG = __TARUVI_APP_SLUG__;
 const SITE_URL = __TARUVI_SITE_URL__;
 const API_KEY = __TARUVI_API_KEY__;
 
+function extractCleanMessage(raw: string): string {
+  try {
+    const parsed = JSON.parse(raw);
+    if (typeof parsed?.message === "string") return parsed.message;
+    if (Array.isArray(parsed?.detail)) return String(parsed.detail[0] ?? raw);
+    if (typeof parsed?.detail === "string") return parsed.detail;
+  } catch { /* not JSON */ }
+  // Python dict repr: {'message': '...'}
+  const m = raw.match(/['"]message['"]\s*:\s*['"]([^'"]+)['"]/);
+  if (m) return m[1];
+  return raw;
+}
+
 async function callFunction(slug: string, params: Record<string, unknown>): Promise<Record<string, unknown>> {
   const res = await taruviClient.httpClient.post<{ status: string; data: Record<string, unknown> | null }>(
     `api/apps/${APP_SLUG}/functions/${slug}/execute/`,
@@ -11,7 +24,8 @@ async function callFunction(slug: string, params: Record<string, unknown>): Prom
   );
   const inner = res?.data ?? {};
   if (inner?.success === false) {
-    throw new Error(String(inner?.message ?? inner?.error ?? "Function returned error"));
+    const raw = String(inner?.message ?? inner?.error ?? "Function returned error");
+    throw new Error(extractCleanMessage(raw));
   }
   return inner;
 }
@@ -99,5 +113,35 @@ export async function storeProviderKey(params: {
     provider_type: params.providerType,
     api_key: params.apiKey,
     capacity: params.capacity,
+  });
+}
+
+export async function deleteCompanyProviderSecrets(companyId: string): Promise<void> {
+  await callFunction("delete-company-data", { company_id: companyId });
+}
+
+export async function deleteCompanyInvitations(companyId: string): Promise<void> {
+  const res = await taruviClient.httpClient.get<{ results: { id: string }[]; count: number }>(
+    `api/apps/${APP_SLUG}/datatables/invitations/?company_id=${encodeURIComponent(companyId)}&page_size=500`
+  );
+  const rows = res?.results ?? [];
+  await Promise.all(
+    rows.map((row) =>
+      taruviClient.httpClient.delete(`api/apps/${APP_SLUG}/datatables/invitations/${row.id}/`)
+    )
+  );
+}
+
+export async function syncParticipantProviderSecret(params: {
+  invitationId: string;
+  participantAppSlug: string;
+  participantApiKey: string;
+  participantSiteUrl: string;
+}): Promise<Record<string, unknown>> {
+  return callFunction("sync-provider-secret", {
+    invitation_id: params.invitationId,
+    participant_app_slug: params.participantAppSlug,
+    participant_api_key: params.participantApiKey,
+    participant_site_url: params.participantSiteUrl,
   });
 }
