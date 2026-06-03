@@ -4,17 +4,15 @@ import {
   Typography,
   Button,
   Stack,
+  CircularProgress,
+  Chip,
   Checkbox,
   FormControlLabel,
-  CircularProgress,
-  Alert,
-  Chip,
 } from "@mui/material";
 import {
   useGetIdentity,
   useList,
   useOne,
-  useUpdate,
   useNotification,
 } from "@refinedev/core";
 import { motion, AnimatePresence } from "framer-motion";
@@ -27,7 +25,7 @@ import GitHubIcon from "@mui/icons-material/GitHub";
 // ─── Logo ────────────────────────────────────────────────────────────────────
 // Storage bucket is public — direct URL, no auth needed.
 const LOGO_URL =
-  "https://hackathonsite.taruvi.cloud/api/apps/hackathonapp/storage/buckets/storage/objects/Logo%20Only%20(2).png";
+  "https://hackathonsite.taruvi.cloud/api/apps/hackathonapp/storage/buckets/storage/objects/Logo.png";
 
 const BUILDER_URL =
   "https://hackathonsite.taruvi.cloud/api/apps/hackathonapp/storage/buckets/storage/objects/builder.png";
@@ -54,42 +52,233 @@ const API_SCREENSHOTS = [
   { src: `${STORAGE_BASE}/api-8.png`, alt: "Create and copy the generated environment variables" },
 ];
 
-const NDA_TEXT = `TARUVI HACKS — NON-DISCLOSURE AGREEMENT
 
-Effective Date: Date of electronic acceptance
+// ─── EULA text ─────────────────────────────────────────────────────────────
+const EULA_TEXT = `EOX Build-a-thon End User License Agreement (EULA)
 
-This Non-Disclosure Agreement ("Agreement") is entered into between Taruvi ("Company") and you ("Participant").
+Effective Date: [Insert Date]
 
-1. CONFIDENTIAL INFORMATION
-During the hackathon, you may be given access to non-public information, including but not limited to business plans, technical specifications, product concepts, APIs, data structures, and any other proprietary information disclosed by Company or its partners ("Confidential Information").
+This End User License Agreement ("Agreement") governs participation in the Build-a-thon program operated by EOX Vantage ("EOX," "we," "our," or "us"), including access to applications, workflows, templates, development environments, and related services provided through the TaruviBase platform.
 
-2. YOUR OBLIGATIONS
-You agree to:
-  • Keep all Confidential Information strictly confidential.
-  • Not disclose Confidential Information to any third party without prior written consent from Taruvi.
-  • Use Confidential Information solely for the purpose of participating in TaruviHacks.
-  • Protect Confidential Information with at least the same degree of care you apply to your own confidential information, but no less than reasonable care.
+By accessing or using the Build-a-thon environment, TaruviBase, or any related applications or services, you ("Participant" or "User") agree to be bound by this Agreement.
 
-3. EXCLUSIONS
-These obligations do not apply to information that:
-  (a) Is or becomes publicly known through no breach of this Agreement;
-  (b) Was rightfully in your possession before disclosure;
-  (c) Is independently developed by you without use of Confidential Information; or
-  (d) Is required to be disclosed by law or court order, provided you give Taruvi prior written notice where reasonably possible.
+1. Purpose of the Build-a-thon
 
-4. INTELLECTUAL PROPERTY
-Work product created during the hackathon using Taruvi tools, APIs, or platforms may be subject to separate IP terms communicated at the event. You retain ownership of independently created work that does not incorporate Taruvi's Confidential Information.
+The Build-a-thon is an educational and collaborative innovation program designed to allow organizations and participants to explore rapid application development, workflow automation, and prototype creation using TaruviBase.
 
-5. NO WARRANTIES
-Confidential Information is provided "as is." Taruvi makes no representations or warranties, express or implied, regarding its accuracy, completeness, or fitness for any particular purpose.
+Applications, workflows, automations, and outputs created during the Build-a-thon are intended for demonstration, experimentation, and evaluation purposes unless otherwise agreed in writing.
 
-6. TERM
-This Agreement remains in effect for two (2) years from the date of acceptance and survives the conclusion of your participation in TaruviHacks.
+2. License Grant
 
-7. GOVERNING LAW
-This Agreement is governed by applicable law in the jurisdiction of the event. Any disputes arising hereunder shall be resolved in the courts of that jurisdiction.
+EOX grants Participants a limited, revocable, non-exclusive, non-transferable license to access and use the Build-a-thon environment and TaruviBase solely for participation in the program and related evaluation activities.
 
-By clicking "I Agree & Continue", you confirm that you have read, understood, and agree to be legally bound by the terms of this Agreement.`;
+Participants may not:
+● sublicense, resell, or commercially distribute the platform
+● reverse engineer or attempt to extract source code from the platform
+● use the environment for unlawful or unauthorized purposes
+● upload malicious code, malware, or harmful content
+● interfere with platform security or operations
+
+3. Prototype and Beta Software Disclaimer
+
+The Build-a-thon environment, TaruviBase features, AI tools, integrations, workflows, templates, and related services may include beta, preview, experimental, or early-access functionality ("Beta Services").
+
+Applications, workflows, automations, and AI-generated outputs created during the Build-a-thon:
+● may contain errors, inaccuracies, vulnerabilities, or incomplete functionality
+● may not be production-ready
+● may not comply with legal or regulatory requirements
+● may be modified or discontinued at any time without notice
+
+Participants use all Build-a-thon outputs and Beta Services at their own risk.
+
+EOX makes no representation that any application, workflow, or output is secure, uninterrupted, accurate, or suitable for production deployment.
+
+EOX is under no obligation to provide maintenance, support, updates, or continued availability for Beta Services.
+
+4. Artificial Intelligence & Generated Content
+
+The Build-a-thon environment may incorporate artificial intelligence, automation tools, and generative technologies.
+
+Participants acknowledge that:
+● AI-generated outputs may be inaccurate, incomplete, or unsuitable for intended purposes
+● generated code may require human review, testing, and validation
+● AI-generated content may resemble third-party materials or publicly available content
+● EOX does not guarantee originality, legal compliance, or fitness for a particular purpose
+
+Participants remain solely responsible for reviewing and validating all generated content, code, workflows, and outputs prior to use or deployment.
+
+5. Data Restrictions
+
+Participants agree not to upload, process, or store:
+● protected health information (PHI)
+● payment card information
+● classified or export-controlled data
+● sensitive personal information
+● confidential third-party information without authorization
+● regulated or restricted data prohibited by applicable law
+
+The Build-a-thon environment is not intended for regulated or high-risk production workloads unless separately contracted and configured by EOX.
+
+6. Intellectual Property Ownership
+
+Participants retain ownership of:
+● applications, workflows, automations, and code created by or for the Participant during the Build-a-thon
+● Participant-provided business processes, data, branding, trademarks, and confidential information
+● pre-existing intellectual property owned prior to participation
+
+EOX retains all rights, title, and interest in and to:
+● the TaruviBase platform
+● platform architecture
+● APIs
+● infrastructure
+● templates
+● frameworks
+● connectors
+● backend services
+● documentation
+● proprietary tooling
+● underlying EOX intellectual property and technology
+
+Participation in the Build-a-thon does not transfer ownership of TaruviBase or any underlying EOX technology to Participants.
+
+Participants acknowledge that applications or code generated during the Build-a-thon may utilize third-party artificial intelligence tools, third-party development environments, open-source software, or third-party integrations, each of which may be subject to separate license terms and restrictions.
+
+EOX makes no representation or warranty regarding:
+● ownership of AI-generated code or outputs
+● exclusivity or originality of generated content
+● non-infringement of third-party intellectual property rights
+
+Participants are solely responsible for reviewing, validating, licensing, and securing any applications, code, workflows, or outputs prior to production deployment or commercial use.
+
+EOX may reference participation in the Build-a-thon for promotional or marketing purposes unless otherwise agreed in writing, but shall not publicly disclose Participant confidential information or proprietary business data without consent.
+
+7. Open Source Components
+
+The TaruviBase platform and related applications may incorporate third-party or open-source software components.
+
+Such components may be governed by separate license terms provided by their respective licensors.
+
+Nothing in this Agreement limits Participants' rights under applicable open-source licenses.
+
+EOX makes no warranty regarding third-party or open-source software components.
+
+8. Acceptable Use
+
+Participants agree not to use the Build-a-thon environment or TaruviBase to:
+● violate any applicable law or regulation
+● infringe intellectual property rights
+● upload malicious code, ransomware, or harmful scripts
+● interfere with platform security or availability
+● conduct unauthorized penetration testing or vulnerability scanning
+● generate unlawful, discriminatory, abusive, deceptive, or harmful content
+● impersonate another individual or organization
+● process prohibited or restricted data without authorization
+● upload, generate, or process excessive volumes of data beyond reasonable Build-a-thon usage
+● execute automated scripts, bots, bulk import jobs, or workloads intended to overload, degrade, benchmark, or excessively consume platform resources
+● create or attempt to create large-scale datasets, mass API requests, or millions of records without prior written authorization from EOX
+
+EOX reserves the right to suspend or terminate access for violations of this section.
+
+9. Confidentiality
+
+Participants agree not to disclose:
+● platform credentials
+● non-public platform functionality
+● proprietary technical information shared during the Build-a-thon
+● confidential materials or documentation provided by EOX
+
+This obligation does not apply to information that is publicly available or independently developed without use of EOX confidential information.
+
+10. Export Compliance
+
+Participants agree to comply with all applicable export control and trade sanctions laws and regulations of the United States and other applicable jurisdictions.
+
+Participants may not access or use the Build-a-thon environment or TaruviBase:
+● in prohibited countries or territories
+● for prohibited end uses
+● on behalf of restricted or sanctioned parties
+
+Participants represent that they are not subject to sanctions or export restrictions that would prohibit participation.
+
+11. Disclaimer of Warranties
+
+THE BUILD-A-THON, TARUVIBASE PLATFORM, APPLICATIONS, OUTPUTS, AND RELATED SERVICES ARE PROVIDED "AS IS" AND "AS AVAILABLE."
+
+EOX DISCLAIMS ALL WARRANTIES, EXPRESS OR IMPLIED, INCLUDING:
+● MERCHANTABILITY
+● FITNESS FOR A PARTICULAR PURPOSE
+● NON-INFRINGEMENT
+● SECURITY
+● AVAILABILITY
+● ACCURACY
+
+EOX DOES NOT WARRANT THAT THE SERVICES WILL BE UNINTERRUPTED, ERROR-FREE, OR FREE OF HARMFUL COMPONENTS.
+
+12. Limitation of Liability
+
+TO THE MAXIMUM EXTENT PERMITTED BY LAW, EOX SHALL NOT BE LIABLE FOR:
+● INDIRECT, INCIDENTAL, SPECIAL, CONSEQUENTIAL, OR PUNITIVE DAMAGES
+● LOSS OF PROFITS
+● LOSS OF BUSINESS OPPORTUNITIES
+● LOSS OF DATA
+● BUSINESS INTERRUPTION
+● SECURITY INCIDENTS ARISING FROM PROTOTYPE OR BETA SOFTWARE USE
+
+EOX'S TOTAL LIABILITY UNDER THIS AGREEMENT SHALL NOT EXCEED THE AMOUNT PAID BY PARTICIPANT TO ACCESS THE BUILD-A-THON, IF ANY.
+
+13. Arbitration & Dispute Resolution
+
+Any dispute, claim, or controversy arising out of or relating to this Agreement or the use of the Build-a-thon environment or TaruviBase shall first be addressed through good-faith informal discussions between the parties.
+
+If the dispute cannot be resolved informally, it shall be resolved through binding arbitration administered in the State of Ohio under the rules of the American Arbitration Association.
+
+The arbitration shall:
+● be conducted in English
+● be conducted by a single arbitrator
+● take place in Ohio unless otherwise agreed by the parties
+
+Each party shall bear its own legal fees and costs unless otherwise determined by the arbitrator.
+
+Nothing in this section prevents EOX from seeking injunctive or equitable relief in a court of competent jurisdiction for misuse of intellectual property, confidentiality breaches, or security-related violations.
+
+14. Governing Law & Venue
+
+This Agreement shall be governed by and construed in accordance with the laws of the State of Ohio, without regard to conflict of law principles.
+
+Subject to the arbitration provisions above, the parties agree that any court proceedings permitted under this Agreement shall be brought exclusively in the state or federal courts located in Ohio.
+
+The parties consent to the jurisdiction and venue of such courts.
+
+15. Termination
+
+EOX may suspend or terminate Participant access at any time for:
+● misuse of the platform
+● violation of this Agreement
+● security concerns
+● unlawful activity
+● actions that may negatively impact EOX systems or other participants
+
+Upon termination, Participants must immediately cease use of the Build-a-thon environment and related services.
+
+16. Modification of Terms
+
+EOX reserves the right to modify or update this Agreement at any time.
+
+Updated versions may be posted within the Build-a-thon environment, application interface, or related websites.
+
+Continued participation or use following such updates constitutes acceptance of the revised Agreement.
+
+17. Entire Agreement
+
+This Agreement constitutes the entire agreement between the parties regarding participation in the Build-a-thon and use of the TaruviBase environment and supersedes all prior discussions or understandings relating to the subject matter herein.
+
+18. Severability
+
+If any provision of this Agreement is determined to be invalid or unenforceable, the remaining provisions shall remain in full force and effect.
+
+19. Contact Information
+
+Questions regarding this Agreement may be directed to EOX Vantage.`;
 
 // ─── Types ─────────────────────────────────────────────────────────────────
 interface TaruviIdentity {
@@ -107,8 +296,6 @@ interface Invitation {
   email: string;
   site_slug: string;
   invite_status?: string;
-  nda_signed?: boolean;
-  nda_signed_at?: string;
 }
 
 interface Company {
@@ -456,102 +643,72 @@ function WelcomeStep({
   );
 }
 
-// ─── Step 1 — NDA ───────────────────────────────────────────────────────────
-function NdaStep({
-  name,
-  alreadySigned,
-  signing,
-  onAgree,
-}: {
-  name: string;
-  alreadySigned: boolean;
-  signing: boolean;
-  onAgree: () => void;
-}) {
-  const [agreed, setAgreed] = useState(alreadySigned);
+// ─── Step 1 — EULA ──────────────────────────────────────────────────────────
+function EulaStep({ name, onNext }: { name: string; onNext: () => void }) {
+  const [agreed, setAgreed] = useState(false);
 
   return (
     <Box>
       <Typography
         variant="h4"
-        sx={{
-          fontFamily: "'Quicksand', sans-serif",
-          fontWeight: 700,
-          mb: 0.75,
-        }}
+        sx={{ fontFamily: "'Quicksand', sans-serif", fontWeight: 700, mb: 0.75 }}
       >
-        Non-Disclosure Agreement
+        End User License Agreement
       </Typography>
 
       <HelperMessage>
-        Before we proceed, {name}, please review and sign the Non-Disclosure Agreement below. This agreement ensures that all proprietary information shared during the hackathon remains confidential. Please read through it carefully, and check the acknowledgment box once you are ready to continue.
+        Before we get started, {name}, please read and accept the EOX Build-a-thon End User License Agreement below. You must agree to the terms to continue.
       </HelperMessage>
 
-      {alreadySigned && (
-        <Alert
-          severity="success"
-          icon={<CheckCircleRoundedIcon />}
-          sx={{ mb: 2.5 }}
-        >
-          You've already signed this — you're all good to continue!
-        </Alert>
-      )}
-
-      {/* NDA full text — no scroll, full height */}
       <Box
         sx={{
-          ...glassBlue,
+          ...glass,
           borderRadius: "16px",
-          p: 3.5,
+          p: 3,
           mb: 3,
-          fontSize: 13,
-          color: "text.secondary",
-          lineHeight: 1.8,
-          whiteSpace: "pre-wrap",
+          maxHeight: 340,
+          overflowY: "auto",
         }}
       >
-        {NDA_TEXT}
+        <Typography
+          variant="body2"
+          sx={{
+            color: "#1a2a3a",
+            lineHeight: 1.75,
+            whiteSpace: "pre-wrap",
+            fontFamily: "'Open Sans', sans-serif",
+            fontSize: 13,
+          }}
+        >
+          {EULA_TEXT}
+        </Typography>
       </Box>
 
       <FormControlLabel
-        sx={{ mb: 3, alignItems: "flex-start" }}
         control={
           <Checkbox
             checked={agreed}
             onChange={(e) => setAgreed(e.target.checked)}
-            disabled={alreadySigned}
-            sx={{ pt: 0.25 }}
+            sx={{ color: BLUE, "&.Mui-checked": { color: BLUE } }}
           />
         }
         label={
-          <Typography variant="body2" sx={{ pt: 0.25 }}>
-            I have read and agree to the Non-Disclosure Agreement above.
+          <Typography variant="body2" sx={{ color: "#1a2a3a", lineHeight: 1.5 }}>
+            I have read and agree to the EOX Build-a-thon End User License Agreement
           </Typography>
         }
+        sx={{ mb: 3, alignItems: "flex-start" }}
       />
 
       <Button
         variant="contained"
         size="large"
-        disabled={!agreed || signing}
-        onClick={onAgree}
-        startIcon={
-          signing ? (
-            <CircularProgress size={16} color="inherit" />
-          ) : alreadySigned ? (
-            <CheckCircleRoundedIcon />
-          ) : undefined
-        }
-        endIcon={
-          !signing && !alreadySigned ? <ArrowForwardRoundedIcon /> : undefined
-        }
+        endIcon={<ArrowForwardRoundedIcon />}
+        onClick={onNext}
+        disabled={!agreed}
         sx={{ px: 4 }}
       >
-        {signing
-          ? "Saving…"
-          : alreadySigned
-          ? "Already Signed — Continue"
-          : "I Agree & Continue"}
+        I Agree &amp; Continue
       </Button>
     </Box>
   );
@@ -573,7 +730,7 @@ function VideoStep({ name, onNext }: { name: string; onNext: () => void }) {
       </Typography>
 
       <HelperMessage>
-        With the NDA complete, {name}, let us introduce you to TaruviBase — the platform you will be building on throughout this hackathon. This video provides a comprehensive overview of its capabilities and architecture. Please watch it in full before proceeding to the workspace setup.
+        Let us introduce you to TaruviBase, {name} — the platform you will be building on throughout this hackathon. This video provides a comprehensive overview of its capabilities and architecture. Please watch it in full before proceeding to the workspace setup.
       </HelperMessage>
 
       <Box
@@ -607,7 +764,7 @@ function VideoStep({ name, onNext }: { name: string; onNext: () => void }) {
   );
 }
 
-// ─── Step 3 — Themes ────────────────────────────────────────────────────────
+// ─── Step 3 — Themes ──────────────────────────────────────────────────────── (step index 3)
 function ThemesStep({
   name,
   themes,
@@ -1080,7 +1237,6 @@ export const Onboarding: React.FC = () => {
   const [splashDone, setSplashDone] = useState(false);
   const [step, setStep] = useState(0);
   const [dir, setDir] = useState(1);
-  const [ndaSigning, setNdaSigning] = useState(false);
 
   const { data: identity, isLoading: identityLoading } =
     useGetIdentity<TaruviIdentity>();
@@ -1152,8 +1308,6 @@ export const Onboarding: React.FC = () => {
   });
   const assignedThemes = themesResult?.data ?? [];
 
-  const { mutate: updateInv } = useUpdate();
-
   const displayName =
     identity?.full_name ||
     [identity?.first_name, identity?.last_name].filter(Boolean).join(" ") ||
@@ -1169,39 +1323,6 @@ export const Onboarding: React.FC = () => {
   const goPrev = () => {
     setDir(-1);
     setStep((s) => Math.max(s - 1, 0));
-  };
-
-  const handleNdaAgree = () => {
-    if (invitation?.nda_signed) {
-      goNext();
-      return;
-    }
-    if (!invitation) return;
-    setNdaSigning(true);
-    updateInv(
-      {
-        resource: "invitations",
-        id: invitation.id,
-        values: {
-          nda_signed: true,
-          nda_signed_at: new Date().toISOString(),
-        },
-      },
-      {
-        onSuccess: () => {
-          setNdaSigning(false);
-          notify?.({ message: "NDA signed successfully.", type: "success" });
-          goNext();
-        },
-        onError: () => {
-          setNdaSigning(false);
-          notify?.({
-            message: "Failed to record NDA signature. Please try again.",
-            type: "error",
-          });
-        },
-      }
-    );
   };
 
   const siteSlug = invitation?.site_slug || company?.site_slug;
@@ -1310,14 +1431,7 @@ export const Onboarding: React.FC = () => {
                         onNext={goNext}
                       />
                     )}
-                    {step === 1 && (
-                      <NdaStep
-                        name={displayName}
-                        alreadySigned={!!invitation?.nda_signed}
-                        signing={ndaSigning}
-                        onAgree={handleNdaAgree}
-                      />
-                    )}
+                    {step === 1 && <EulaStep name={displayName} onNext={goNext} />}
                     {step === 2 && <VideoStep name={displayName} onNext={goNext} />}
                     {step === 3 && (
                       <ThemesStep name={displayName} themes={assignedThemes} onNext={goNext} />
@@ -1434,7 +1548,7 @@ export const Onboarding: React.FC = () => {
                 Build-a-thon Helper
               </Typography>
               <Typography variant="body2" sx={{ color: "#1a2a3a", lineHeight: 1.6, fontSize: 14 }}>
-                Welcome to Build-a-thon! I'll walk you through every step — NDA, TaruviBase intro, and workspace setup. Follow along and you'll be building in no time!
+                Welcome to Build-a-thon! I'll walk you through every step — TaruviBase intro, themes, and workspace setup. Follow along and you'll be building in no time!
               </Typography>
             </Box>
           </Box>

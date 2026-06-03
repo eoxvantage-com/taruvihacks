@@ -56,7 +56,7 @@ import EventRoundedIcon from "@mui/icons-material/EventRounded";
 import LinkRoundedIcon from "@mui/icons-material/LinkRounded";
 import SendRoundedIcon from "@mui/icons-material/SendRounded";
 import MarkEmailReadRoundedIcon from "@mui/icons-material/MarkEmailReadRounded";
-import { inviteUserToSite, listTaruviInvitations, sendSurveyEmails } from "../../services/taruviCloudApi";
+import { inviteUserToSite, listTaruviInvitations, sendSurveyEmails, storeProviderKey } from "../../services/taruviCloudApi";
 
 interface Company {
   id: string;
@@ -80,8 +80,6 @@ interface Invitation {
   email: string;
   site_slug: string;
   invite_status?: string;
-  nda_signed?: boolean;
-  nda_signed_at?: string;
   invited_at?: string;
 }
 
@@ -225,7 +223,6 @@ export const CompanyShow: React.FC = () => {
   });
   const providers: Provider[] = providersResult?.data ?? [];
 
-  const { mutate: createProvider } = useCreate();
   const { mutate: deleteProvider } = useDelete();
   const { mutate: updateProvider } = useUpdate();
 
@@ -245,34 +242,27 @@ export const CompanyShow: React.FC = () => {
     setProviderError(null);
   };
 
-  const handleProviderSubmit = () => {
+  const handleProviderSubmit = async () => {
     if (!providerApiKey.trim() || !providerCapacity) return;
     setProviderSubmitting(true);
     setProviderError(null);
-    createProvider(
-      {
-        resource: "providers",
-        values: {
-          company_id: companyId,
-          provider_type: providerType,
-          api_key: providerApiKey.trim(),
-          capacity_total: Number(providerCapacity),
-          capacity_remaining: Number(providerCapacity),
-          created_at: new Date().toISOString(),
-        },
-      },
-      {
-        onSuccess: () => {
-          setProviderSubmitting(false);
-          handleProviderClose();
-          notify?.({ message: "Provider added.", type: "success" });
-        },
-        onError: () => {
-          setProviderSubmitting(false);
-          setProviderError("Failed to save provider. Please try again.");
-        },
+    try {
+      const result = await storeProviderKey({
+        companyId,
+        providerType,
+        apiKey: providerApiKey.trim(),
+        capacity: Number(providerCapacity),
+      });
+      if (result?.success === false) {
+        throw new Error(String(result?.message ?? "Failed to save provider"));
       }
-    );
+      await providersQuery.refetch();
+      handleProviderClose();
+      notify?.({ message: "Provider added.", type: "success" });
+    } catch (err: unknown) {
+      setProviderError(err instanceof Error ? err.message : "Failed to save provider. Please try again.");
+    }
+    setProviderSubmitting(false);
   };
 
   const handleDeleteProvider = (providerId: string, type: string) => {
@@ -430,7 +420,7 @@ export const CompanyShow: React.FC = () => {
     createInvitation(
       {
         resource: "invitations",
-        values: { company_id: companyId, email: inviteEmail.trim().toLowerCase(), site_slug: company.site_slug ?? "", invite_status: "pending", nda_signed: false, invited_at: new Date().toISOString() },
+        values: { company_id: companyId, email: inviteEmail.trim().toLowerCase(), site_slug: company.site_slug ?? "", invite_status: "pending", invited_at: new Date().toISOString() },
       },
       {
         onSuccess: () => { setInviteSubmitting(false); handleInviteClose(); notify?.({ message: `Invitation sent to ${inviteEmail}`, type: "success" }); },
@@ -474,7 +464,7 @@ export const CompanyShow: React.FC = () => {
         await inviteUserToSite({ orgSlug: company.org_slug, email, siteSlug: company.site_slug ?? "" });
         await new Promise<void>((resolve, reject) =>
           createInvitation(
-            { resource: "invitations", values: { company_id: companyId, email, site_slug: company.site_slug ?? "", invite_status: "pending", nda_signed: false, invited_at: new Date().toISOString() } },
+            { resource: "invitations", values: { company_id: companyId, email, site_slug: company.site_slug ?? "", invite_status: "pending", invited_at: new Date().toISOString() } },
             { onSuccess: () => resolve(), onError: () => reject(new Error("Save failed")) }
           )
         );
@@ -539,7 +529,6 @@ export const CompanyShow: React.FC = () => {
 
   const pendingCount = invitations.filter((i) => !i.invite_status || i.invite_status === "pending").length;
   const acceptedCount = invitations.filter((i) => i.invite_status === "accepted").length;
-  const ndaCount = invitations.filter((i) => i.nda_signed).length;
 
   return (
     <Container maxWidth="xl" sx={{ py: 4, px: { xs: 2, md: 4 } }}>
@@ -683,7 +672,6 @@ export const CompanyShow: React.FC = () => {
           { label: "Total Users", value: invitations.length, icon: <PersonAddRoundedIcon /> },
           { label: "Pending", value: pendingCount, icon: <PendingRoundedIcon /> },
           { label: "Accepted", value: acceptedCount, icon: <CheckCircleRoundedIcon /> },
-          { label: "NDA Signed", value: ndaCount, icon: <CheckCircleRoundedIcon /> },
         ].map((stat) => (
           <Paper key={stat.label} variant="outlined" sx={{ flex: 1, p: 2, borderRadius: 2 }}>
             <Typography variant="caption" color="text.secondary" display="block">{stat.label}</Typography>
@@ -726,7 +714,6 @@ export const CompanyShow: React.FC = () => {
                 <TableRow>
                   <TableCell>Email</TableCell>
                   <TableCell>Invite Status</TableCell>
-                  <TableCell>NDA</TableCell>
                   <TableCell>Invited</TableCell>
                   <TableCell align="right" />
                 </TableRow>
@@ -734,7 +721,7 @@ export const CompanyShow: React.FC = () => {
               <TableBody>
                 {paginatedRows.length === 0 && !invitationsQuery.isLoading && (
                   <TableRow>
-                    <TableCell colSpan={5} align="center" sx={{ py: 6 }}>
+                    <TableCell colSpan={4} align="center" sx={{ py: 6 }}>
                       <Typography color="text.secondary" variant="body2">No users yet. Invite someone to get started.</Typography>
                     </TableCell>
                   </TableRow>
@@ -743,11 +730,6 @@ export const CompanyShow: React.FC = () => {
                   <TableRow key={inv.id}>
                     <TableCell><Typography variant="body2" fontWeight={500}>{inv.email}</Typography></TableCell>
                     <TableCell><StatusChip status={inv.invite_status} /></TableCell>
-                    <TableCell>
-                      {inv.nda_signed
-                        ? <Chip label="Signed" color="success" size="small" />
-                        : <Chip label="Not Signed" sx={{ bgcolor: "#00acc1", color: "#fff" }} size="small" />}
-                    </TableCell>
                     <TableCell>
                       <Typography variant="body2" color="text.secondary">
                         {inv.invited_at ? new Date(inv.invited_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "—"}

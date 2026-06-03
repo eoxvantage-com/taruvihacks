@@ -65,7 +65,7 @@ export async function uploadStorageObject(file: File, filename: string): Promise
     `${SITE_URL}/api/apps/${APP_SLUG}/storage/buckets/storage/objects/`,
     {
       method: "POST",
-      headers: { Authorization: `Bearer ${API_KEY}` },
+      headers: { Authorization: `Api-Key ${API_KEY}` },
       body: form,
     }
   );
@@ -86,4 +86,18 @@ export async function listTaruviInvitations(orgSlug: string): Promise<TaruviInvi
 
 export async function sendSurveyEmails(companyId: string): Promise<Record<string, unknown>> {
   return callFunction("send-hackathon-survey-emails", { company_id: companyId });
+}
+
+export async function storeProviderKey(params: {
+  companyId: string;
+  providerType: string;
+  apiKey: string;
+  capacity: number;
+}): Promise<Record<string, unknown>> {
+  return callFunction("store-provider-key", {
+    company_id: params.companyId,
+    provider_type: params.providerType,
+    api_key: params.apiKey,
+    capacity: params.capacity,
+  });
 }
