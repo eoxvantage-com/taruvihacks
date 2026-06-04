@@ -145,3 +145,83 @@ export async function syncParticipantProviderSecret(params: {
     participant_site_url: params.participantSiteUrl,
   });
 }
+
+// ─── GitHub OAuth + Codespace ─────────────────────────────────────────────────
+
+export async function githubOAuthExchange(params: {
+  code: string;
+  codeVerifier: string;
+  redirectUri: string;
+}): Promise<{ access_token: string; github_username: string; github_email: string }> {
+  const result = await callFunction("github-oauth-exchange", {
+    code: params.code,
+    code_verifier: params.codeVerifier,
+    redirect_uri: params.redirectUri,
+  });
+  return {
+    access_token: result.access_token as string,
+    github_username: result.github_username as string,
+    github_email: (result.github_email as string) ?? "",
+  };
+}
+
+export async function createCodespace(params: {
+  githubToken: string;
+  displayName: string;
+}): Promise<{ codespace_name: string; web_url: string; state: string }> {
+  const result = await callFunction("github-create-codespace", {
+    github_token: params.githubToken,
+    display_name: params.displayName,
+  });
+  return {
+    codespace_name: result.codespace_name as string,
+    web_url: (result.web_url as string) ?? "",
+    state: (result.state as string) ?? "",
+  };
+}
+
+export async function injectCodespaceSecrets(params: {
+  githubToken: string;
+  codespaceName: string;
+  taruvi_site_url: string;
+  taruvi_app_slug: string;
+  taruvi_api_key: string;
+}): Promise<{ success: boolean }> {
+  const result = await callFunction("github-inject-secrets", {
+    github_token: params.githubToken,
+    codespace_name: params.codespaceName,
+    taruvi_site_url: params.taruvi_site_url,
+    taruvi_app_slug: params.taruvi_app_slug,
+    taruvi_api_key: params.taruvi_api_key,
+  });
+  return { success: result.success as boolean };
+}
+
+export async function pollCodespaceStatus(params: {
+  githubToken: string;
+  codespaceName: string;
+}): Promise<{ state: string; web_url: string }> {
+  const result = await callFunction("github-poll-codespace", {
+    github_token: params.githubToken,
+    codespace_name: params.codespaceName,
+  });
+  return {
+    state: (result.state as string) ?? "",
+    web_url: (result.web_url as string) ?? "",
+  };
+}
+
+export interface BatchParticipant {
+  github_username: string;
+  github_token: string;
+  taruvi_site_url: string;
+  taruvi_api_key: string;
+  taruvi_app_slug: string;
+}
+
+export async function batchCreateCodespaces(
+  participants: BatchParticipant[]
+): Promise<{ username: string; web_url: string; status: string; codespace_name?: string }[]> {
+  const result = await callFunction("github-batch-codespaces", { participants });
+  return (result.results as { username: string; web_url: string; status: string; codespace_name?: string }[]) ?? [];
+}

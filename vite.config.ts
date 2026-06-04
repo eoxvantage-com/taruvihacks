@@ -181,6 +181,7 @@ export default defineConfig(({ mode }) => {
       __TARUVI_APP_SLUG__: JSON.stringify(env.TARUVI_APP_SLUG ?? ""),
       __TARUVI_API_KEY__: JSON.stringify(env.TARUVI_API_KEY ?? ""),
       __TARUVI_APP_TITLE__: JSON.stringify(env.TARUVI_APP_TITLE ?? ""),
+      __GITHUB_CLIENT_ID__: JSON.stringify(env.GITHUB_CLIENT_ID ?? ""),
     },
     plugins: [react(), createClientLogPlugin()],
     optimizeDeps: {

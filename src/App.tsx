@@ -35,6 +35,7 @@ import { Login } from "./pages/login";
 import { CompaniesList, CompanyShow } from "./pages/companies";
 import { ThemesList } from "./pages/themes";
 import { Onboarding } from "./pages/onboarding";
+import { GitHubCallback } from "./pages/github-callback";
 import BusinessRoundedIcon from "@mui/icons-material/BusinessRounded";
 import StyleRoundedIcon from "@mui/icons-material/StyleRounded";
 
@@ -159,6 +160,7 @@ const AppContent = () => {
                     }
                   >
                     <Route path="onboarding" element={<Onboarding />} />
+                    <Route path="github/callback" element={<GitHubCallback />} />
 
                     {/* Admin portal — requires Admin or Super Admin role */}
                     <Route

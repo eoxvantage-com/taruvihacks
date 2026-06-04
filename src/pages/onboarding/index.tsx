@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import {
   Box,
   Typography,
@@ -27,7 +27,12 @@ import ChevronRightRoundedIcon from "@mui/icons-material/ChevronRightRounded";
 import ExpandMoreRoundedIcon from "@mui/icons-material/ExpandMoreRounded";
 import ContentCopyRoundedIcon from "@mui/icons-material/ContentCopyRounded";
 import GitHubIcon from "@mui/icons-material/GitHub";
-import { syncParticipantProviderSecret } from "../../services/taruviCloudApi";
+import {
+  syncParticipantProviderSecret,
+  createCodespace,
+  injectCodespaceSecrets,
+  pollCodespaceStatus,
+} from "../../services/taruviCloudApi";
 
 // ─── Logo ────────────────────────────────────────────────────────────────────
 // Storage bucket is public — direct URL, no auth needed.
@@ -1351,7 +1356,7 @@ function RegisterAppStep({
   );
 }
 
-// ─── Step 7 — Codespace ─────────────────────────────────────────────────────
+// ─── Step 8 — Codespace ─────────────────────────────────────────────────────
 const CODESPACE_FEATURES = [
   "Node.js pre-installed",
   "Taruvi SDK ready",
@@ -1364,11 +1369,21 @@ function CodespaceStep({
   siteSlug,
   registeredAppSlug,
   registeredApiKey,
+  githubUsername,
+  codespaceWebUrl,
+  codespaceStatus,
+  codespaceError,
+  secretsStatus,
 }: {
   name: string;
   siteSlug?: string;
   registeredAppSlug?: string;
   registeredApiKey?: string;
+  githubUsername?: string;
+  codespaceWebUrl?: string;
+  codespaceStatus: CodespaceStatus;
+  codespaceError?: string;
+  secretsStatus: SecretsStatus;
 }) {
   const [envOpen, setEnvOpen] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -1388,50 +1403,67 @@ function CodespaceStep({
     });
   };
 
+  const noGitHub = !githubUsername;
+  const isReady = codespaceStatus === "ready" && secretsStatus === "done";
+  const hasError = codespaceStatus === "error" || codespaceStatus === "timeout";
+  const isWorking = !noGitHub && !isReady && !hasError;
+
+  let statusLabel = "Setting up your dev environment…";
+  if (codespaceStatus === "creating") statusLabel = "Creating your Codespace…";
+  else if (codespaceStatus === "polling") statusLabel = "Starting your Codespace…";
+  else if (secretsStatus === "injecting") statusLabel = "Configuring environment…";
+
+  const openUrl = codespaceWebUrl || CODESPACE_URL;
+
   return (
     <Box sx={{ py: 2 }}>
-      {/* GitHub icon */}
+      {/* Icon */}
       <Box
         sx={{
           width: 80,
           height: 80,
           borderRadius: "50%",
-          background: BLUE_LIGHT,
+          background: isReady ? "rgba(46,125,50,0.12)" : BLUE_LIGHT,
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
           mx: "auto",
           mb: 3,
+          transition: "background 0.4s",
         }}
       >
-        <GitHubIcon sx={{ fontSize: 40, color: BLUE }} />
+        {isReady ? (
+          <CheckCircleRoundedIcon sx={{ fontSize: 40, color: "#2e7d32" }} />
+        ) : (
+          <GitHubIcon sx={{ fontSize: 40, color: BLUE }} />
+        )}
       </Box>
 
       <Typography
         variant="h4"
-        sx={{
-          fontFamily: "'Quicksand', sans-serif",
-          fontWeight: 700,
-          mb: 1.25,
-          textAlign: "center",
-        }}
+        sx={{ fontFamily: "'Quicksand', sans-serif", fontWeight: 700, mb: 1.25, textAlign: "center" }}
       >
         Your Development Environment
       </Typography>
 
-      <HelperMessage>
-        Setup is complete, {name}. Your GitHub Codespace is pre-configured with Node.js, the Taruvi SDK, and a starter template — no local installation required. Click the button below to launch your environment and begin building. We look forward to seeing what you create.
-      </HelperMessage>
+      {noGitHub && (
+        <HelperMessage>
+          Setup is complete, {name}. Your GitHub Codespace is pre-configured with Node.js, the Taruvi SDK, and a starter template — no local installation required. Click below to launch and begin building.
+        </HelperMessage>
+      )}
+      {!noGitHub && isReady && (
+        <HelperMessage>
+          All set, {name}! Your Codespace is live and your credentials are automatically configured. Click below to start building.
+        </HelperMessage>
+      )}
+      {isWorking && (
+        <HelperMessage>
+          Hang tight, {name} — your Codespace is being prepared with everything pre-configured. This usually takes 2–3 minutes.
+        </HelperMessage>
+      )}
 
       {/* Feature chips */}
-      <Stack
-        direction="row"
-        spacing={1}
-        justifyContent="center"
-        flexWrap="wrap"
-        useFlexGap
-        sx={{ mb: 4, gap: 1 }}
-      >
+      <Stack direction="row" spacing={1} justifyContent="center" flexWrap="wrap" useFlexGap sx={{ mb: 4, gap: 1 }}>
         {CODESPACE_FEATURES.map((f) => (
           <Chip
             key={f}
@@ -1448,18 +1480,73 @@ function CodespaceStep({
         ))}
       </Stack>
 
-      <Button
-        variant="contained"
-        size="large"
-        href={CODESPACE_URL}
-        target="_blank"
-        rel="noopener noreferrer"
-        startIcon={<GitHubIcon />}
-        endIcon={<OpenInNewRoundedIcon sx={{ fontSize: 16 }} />}
-        sx={{ px: 4, py: 1.25, fontSize: 15, mb: 3 }}
-      >
-        Open in GitHub Codespace
-      </Button>
+      {/* Main action */}
+      {noGitHub ? (
+        <Button
+          variant="contained"
+          size="large"
+          href={CODESPACE_URL}
+          target="_blank"
+          rel="noopener noreferrer"
+          startIcon={<GitHubIcon />}
+          endIcon={<OpenInNewRoundedIcon sx={{ fontSize: 16 }} />}
+          sx={{ px: 4, py: 1.25, fontSize: 15, mb: 3 }}
+        >
+          Open in GitHub Codespace
+        </Button>
+      ) : isReady ? (
+        <Button
+          variant="contained"
+          size="large"
+          href={openUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          startIcon={<GitHubIcon />}
+          endIcon={<OpenInNewRoundedIcon sx={{ fontSize: 16 }} />}
+          sx={{ px: 4, py: 1.25, fontSize: 15, mb: 3, bgcolor: "#2e7d32", "&:hover": { bgcolor: "#1b5e20" } }}
+        >
+          Open your Codespace →
+        </Button>
+      ) : codespaceStatus === "timeout" ? (
+        <Alert severity="warning" sx={{ mb: 3, borderRadius: "12px" }}>
+          Taking longer than usual —{" "}
+          <a href="https://github.com/codespaces" target="_blank" rel="noopener noreferrer" style={{ color: "inherit", fontWeight: 700 }}>
+            open GitHub Codespaces
+          </a>{" "}
+          to find your environment.
+        </Alert>
+      ) : codespaceStatus === "error" ? (
+        <Alert
+          severity={codespaceError === "403" ? "error" : "warning"}
+          sx={{ mb: 3, borderRadius: "12px" }}
+        >
+          {codespaceError === "403"
+            ? "Your GitHub account needs Codespaces access. Contact your administrator."
+            : <>Setup encountered an issue.{" "}<a href="https://github.com/codespaces" target="_blank" rel="noopener noreferrer" style={{ color: "inherit", fontWeight: 700 }}>Open GitHub Codespaces</a>{" "}directly.</>
+          }
+        </Alert>
+      ) : (
+        <Box sx={{ textAlign: "center", mb: 3 }}>
+          <CircularProgress size={40} sx={{ color: BLUE, mb: 2 }} />
+          <Typography variant="body2" color="text.secondary" sx={{ fontFamily: "'Quicksand', sans-serif", fontWeight: 600 }}>
+            {statusLabel}
+          </Typography>
+          <Typography variant="caption" color="text.disabled" sx={{ display: "block", mt: 0.5 }}>
+            Usually ready in 2–3 minutes
+          </Typography>
+          <Typography variant="caption" color="text.disabled" sx={{ display: "block", mt: 2 }}>
+            Taking longer than expected?{" "}
+            <a
+              href="https://github.com/codespaces"
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{ color: BLUE }}
+            >
+              Open GitHub Codespaces directly →
+            </a>
+          </Typography>
+        </Box>
+      )}
 
       {/* Already registered in a prior session */}
       {alreadyRegistered && (
@@ -1468,91 +1555,31 @@ function CodespaceStep({
         </Alert>
       )}
 
-      {/* Env values accordion — only shown when fresh registration just completed */}
+      {/* Env values accordion — reference / fallback */}
       {hasEnv && (
-        <Box
-          sx={{
-            ...glassBlue,
-            borderRadius: "16px",
-            overflow: "hidden",
-            mb: 2,
-          }}
-        >
+        <Box sx={{ ...glassBlue, borderRadius: "16px", overflow: "hidden", mb: 2 }}>
           <Box
             onClick={() => setEnvOpen((o) => !o)}
-            sx={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-              px: 3,
-              py: 2,
-              cursor: "pointer",
-              userSelect: "none",
-            }}
+            sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", px: 3, py: 2, cursor: "pointer", userSelect: "none" }}
           >
-            <Typography
-              sx={{
-                fontFamily: "'Quicksand', sans-serif",
-                fontWeight: 700,
-                fontSize: 14,
-                color: BLUE,
-              }}
-            >
+            <Typography sx={{ fontFamily: "'Quicksand', sans-serif", fontWeight: 700, fontSize: 14, color: BLUE }}>
               Your environment values
             </Typography>
-            <ExpandMoreRoundedIcon
-              sx={{
-                color: BLUE,
-                fontSize: 22,
-                transform: envOpen ? "rotate(180deg)" : "rotate(0deg)",
-                transition: "transform 0.2s",
-              }}
-            />
+            <ExpandMoreRoundedIcon sx={{ color: BLUE, fontSize: 22, transform: envOpen ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 0.2s" }} />
           </Box>
-
           <Collapse in={envOpen}>
             <Box sx={{ px: 3, pb: 2.5 }}>
               <Typography variant="caption" color="text.secondary" sx={{ display: "block", mb: 1.5, lineHeight: 1.6 }}>
-                When the Codespace opens, click <strong>⚙️ Setup .env</strong> in the status bar, paste these three values, then save. Then click <strong>🔑 Connect Codex</strong> — this completes your Codex integration with the Taruvi platform's MCP context.
+                {noGitHub
+                  ? <>When the Codespace opens, click <strong>⚙️ Setup .env</strong>, paste these values, then save. Click <strong>🔑 Connect Codex</strong> to complete integration.</>
+                  : "These values have been automatically injected into your Codespace. Kept here as a reference."}
               </Typography>
-
               <Box sx={{ position: "relative" }}>
-                <Box
-                  component="pre"
-                  sx={{
-                    fontFamily: "monospace",
-                    fontSize: 12.5,
-                    lineHeight: 1.9,
-                    bgcolor: "rgba(255,255,255,0.7)",
-                    border: `1px solid ${BLUE_BORDER}`,
-                    borderRadius: "10px",
-                    p: 2,
-                    m: 0,
-                    whiteSpace: "pre-wrap",
-                    wordBreak: "break-all",
-                    color: "#003652",
-                    pr: 5,
-                  }}
-                >
+                <Box component="pre" sx={{ fontFamily: "monospace", fontSize: 12.5, lineHeight: 1.9, bgcolor: "rgba(255,255,255,0.7)", border: `1px solid ${BLUE_BORDER}`, borderRadius: "10px", p: 2, m: 0, whiteSpace: "pre-wrap", wordBreak: "break-all", color: "#003652", pr: 5 }}>
                   {envBlock}
                 </Box>
-                <IconButton
-                  size="small"
-                  onClick={handleCopy}
-                  sx={{
-                    position: "absolute",
-                    top: 6,
-                    right: 6,
-                    bgcolor: copied ? "success.light" : "rgba(255,255,255,0.9)",
-                    border: `1px solid ${BLUE_BORDER}`,
-                    "&:hover": { bgcolor: BLUE_LIGHT },
-                  }}
-                >
-                  {copied ? (
-                    <CheckCircleRoundedIcon sx={{ fontSize: 16, color: "success.dark" }} />
-                  ) : (
-                    <ContentCopyRoundedIcon sx={{ fontSize: 16, color: BLUE }} />
-                  )}
+                <IconButton size="small" onClick={handleCopy} sx={{ position: "absolute", top: 6, right: 6, bgcolor: copied ? "success.light" : "rgba(255,255,255,0.9)", border: `1px solid ${BLUE_BORDER}`, "&:hover": { bgcolor: BLUE_LIGHT } }}>
+                  {copied ? <CheckCircleRoundedIcon sx={{ fontSize: 16, color: "success.dark" }} /> : <ContentCopyRoundedIcon sx={{ fontSize: 16, color: BLUE }} />}
                 </IconButton>
               </Box>
             </Box>
@@ -1564,12 +1591,7 @@ function CodespaceStep({
         <Box sx={{ mt: 1 }}>
           <Typography variant="caption" color="text.disabled">
             Your site console:{" "}
-            <a
-              href={`https://${siteSlug}.taruvi.cloud`}
-              target="_blank"
-              rel="noopener noreferrer"
-              style={{ color: BLUE }}
-            >
+            <a href={`https://${siteSlug}.taruvi.cloud`} target="_blank" rel="noopener noreferrer" style={{ color: BLUE }}>
               {siteSlug}.taruvi.cloud
             </a>
           </Typography>
@@ -1579,8 +1601,172 @@ function CodespaceStep({
   );
 }
 
+// ─── Codespace status types ──────────────────────────────────────────────────
+type CodespaceStatus = "idle" | "creating" | "polling" | "ready" | "error" | "timeout";
+type SecretsStatus = "idle" | "injecting" | "done" | "failed";
+
+// ─── PKCE helpers ────────────────────────────────────────────────────────────
+function randomBase64Url(byteCount: number): string {
+  const arr = new Uint8Array(byteCount);
+  window.crypto.getRandomValues(arr);
+  return btoa(String.fromCharCode(...arr))
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=/g, "");
+}
+
+async function sha256Base64Url(plain: string): Promise<string> {
+  const data = new TextEncoder().encode(plain);
+  const digest = await window.crypto.subtle.digest("SHA-256", data);
+  return btoa(String.fromCharCode(...new Uint8Array(digest)))
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=/g, "");
+}
+
+// ─── Step 2 — Connect GitHub ─────────────────────────────────────────────────
+function ConnectGitHubStep({
+  name,
+  githubUsername,
+  onConnected,
+  onNext,
+}: {
+  name: string;
+  githubUsername?: string;
+  onConnected: (token: string, username: string) => void;
+  onNext: () => void;
+}) {
+  const [connecting, setConnecting] = useState(false);
+
+  // Poll localStorage for token written by /github/callback tab
+  useEffect(() => {
+    if (githubUsername) return;
+    const interval = setInterval(() => {
+      const token = localStorage.getItem("gh_access_token");
+      const username = localStorage.getItem("gh_username");
+      if (token && username) {
+        localStorage.removeItem("gh_access_token");
+        localStorage.removeItem("gh_username");
+        clearInterval(interval);
+        onConnected(token, username);
+      }
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [githubUsername, onConnected]);
+
+  const handleConnect = async () => {
+    setConnecting(true);
+    const verifier = randomBase64Url(32);
+    const challenge = await sha256Base64Url(verifier);
+    const state = randomBase64Url(16);
+
+    localStorage.setItem("gh_pkce_verifier", verifier);
+    localStorage.setItem("gh_oauth_state", state);
+
+    const params = new URLSearchParams({
+      client_id: __GITHUB_CLIENT_ID__,
+      redirect_uri: `${window.location.origin}/github/callback`,
+      scope: "codespace",
+      code_challenge: challenge,
+      code_challenge_method: "S256",
+      state,
+    });
+    window.open(
+      `https://github.com/login/oauth/authorize?${params.toString()}`,
+      "_blank",
+      "width=900,height=700,noopener"
+    );
+    setConnecting(false);
+  };
+
+  if (githubUsername) {
+    return (
+      <Box>
+        <Typography
+          variant="h4"
+          sx={{ fontFamily: "'Quicksand', sans-serif", fontWeight: 700, mb: 0.75 }}
+        >
+          Connect GitHub
+        </Typography>
+        <HelperMessage>
+          Your GitHub account is connected, {name}. Your dev environment is being prepared in the background — by the time you finish the remaining steps, it should be ready to go.
+        </HelperMessage>
+        <Box sx={{ ...glassBlue, borderRadius: "16px", p: 4, textAlign: "center", mb: 3.5 }}>
+          <CheckCircleRoundedIcon
+            sx={{ fontSize: 52, color: "#2e7d32", mb: 1.5, display: "block", mx: "auto" }}
+          />
+          <Typography
+            variant="h6"
+            sx={{ fontFamily: "'Quicksand', sans-serif", fontWeight: 700, mb: 0.5 }}
+          >
+            Connected as @{githubUsername}
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            Your Codespace is being set up in the background.
+          </Typography>
+        </Box>
+        <Button
+          variant="contained"
+          size="large"
+          endIcon={<ArrowForwardRoundedIcon />}
+          onClick={onNext}
+          sx={{ px: 4 }}
+        >
+          Continue
+        </Button>
+      </Box>
+    );
+  }
+
+  return (
+    <Box>
+      <Typography
+        variant="h4"
+        sx={{ fontFamily: "'Quicksand', sans-serif", fontWeight: 700, mb: 0.75 }}
+      >
+        Connect GitHub
+      </Typography>
+      <HelperMessage>
+        Connect your GitHub account, {name} — this lets us automatically set up your dev environment so it's ready by the time you finish setup. No manual env var copying needed.
+      </HelperMessage>
+      <Box sx={{ ...glass, borderRadius: "16px", p: 4, textAlign: "center", mb: 3.5 }}>
+        <Box
+          sx={{
+            width: 80,
+            height: 80,
+            borderRadius: "50%",
+            bgcolor: BLUE_LIGHT,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            mx: "auto",
+            mb: 3,
+          }}
+        >
+          <GitHubIcon sx={{ fontSize: 40, color: BLUE }} />
+        </Box>
+        <Button
+          variant="contained"
+          size="large"
+          startIcon={
+            connecting ? <CircularProgress size={18} color="inherit" /> : <GitHubIcon />
+          }
+          onClick={handleConnect}
+          disabled={connecting}
+          sx={{ px: 5, py: 1.5, fontSize: 15, mb: 2 }}
+        >
+          {connecting ? "Redirecting to GitHub…" : "Connect GitHub Account"}
+        </Button>
+        <Typography variant="caption" color="text.secondary" sx={{ display: "block" }}>
+          Requests <strong>codespace</strong> and <strong>repo</strong> scopes to create and configure your dev environment.
+        </Typography>
+      </Box>
+    </Box>
+  );
+}
+
 // ─── Main Onboarding component ───────────────────────────────────────────────
-const TOTAL_STEPS = 8;
+const TOTAL_STEPS = 9;
 
 // ─── Hackathon picker (shown when user has multiple invitations) ────────────
 function HackathonPickerScreen({
@@ -1668,6 +1854,15 @@ export const Onboarding: React.FC = () => {
   const [selectedInvitationId, setSelectedInvitationId] = useState<string | null>(null);
   const [registeredAppSlug, setRegisteredAppSlug] = useState<string>("");
   const [registeredApiKey, setRegisteredApiKey] = useState<string>("");
+  const [githubToken, setGithubToken] = useState<string>("");
+  const [githubUsername, setGithubUsername] = useState<string>("");
+  const [codespaceName, setCodespaceName] = useState<string>("");
+  const [codespaceWebUrl, setCodespaceWebUrl] = useState<string>("");
+  const [codespaceStatus, setCodespaceStatus] = useState<CodespaceStatus>("idle");
+  const [codespaceError, setCodespaceError] = useState<string>("");
+  const [secretsStatus, setSecretsStatus] = useState<SecretsStatus>("idle");
+  const codespaceStarted = useRef(false);
+  const codespaceRetry = useRef(0);
 
   const { data: identity, isLoading: identityLoading } =
     useGetIdentity<TaruviIdentity>();
@@ -1733,6 +1928,62 @@ export const Onboarding: React.FC = () => {
       setRegisteredAppSlug(invitation.participant_app_slug);
     }
   }, [invitation?.provider_sync_status, invitation?.participant_app_slug]);
+
+
+  // Background codespace creation — fires once when GitHub token is available
+  useEffect(() => {
+    if (!githubToken || codespaceStarted.current) return;
+    codespaceStarted.current = true;
+    setCodespaceStatus("creating");
+
+    createCodespace({ githubToken, displayName })
+      .then((result) => {
+        setCodespaceName(result.codespace_name);
+        setCodespaceWebUrl(result.web_url);
+        if (result.state === "Available") {
+          setCodespaceStatus("ready");
+        } else {
+          setCodespaceStatus("polling");
+        }
+      })
+      .catch((err) => {
+        const msg = String((err as Error)?.message ?? "");
+        console.error("[codespace] creation failed:", githubUsername, err);
+        if (msg.includes("needs Codespaces access") || msg.includes("403")) {
+          setCodespaceStatus("error");
+          setCodespaceError("403");
+        } else if (msg.includes("temporarily unavailable") || msg.includes("503")) {
+          setCodespaceStatus("error");
+          setCodespaceError("503");
+        } else {
+          setCodespaceStatus("error");
+          setCodespaceError(msg || "creation_failed");
+        }
+      });
+  }, [githubToken]);
+
+  // Polling — runs every 5s until Available or timeout (5 min)
+  useEffect(() => {
+    if (!githubToken || !codespaceName || codespaceStatus !== "polling") return;
+    let attempts = 0;
+    const interval = setInterval(async () => {
+      attempts++;
+      if (attempts > 60) {
+        clearInterval(interval);
+        setCodespaceStatus("timeout");
+        return;
+      }
+      try {
+        const result = await pollCodespaceStatus({ githubToken, codespaceName });
+        if (result.web_url) setCodespaceWebUrl(result.web_url);
+        if (result.state === "Available") {
+          clearInterval(interval);
+          setCodespaceStatus("ready");
+        }
+      } catch { /* silent — keep polling */ }
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [codespaceName, githubToken, codespaceStatus]);
 
   const { result: company } = useOne<Company>({
     resource: "companies",
@@ -1907,17 +2158,28 @@ export const Onboarding: React.FC = () => {
                       />
                     )}
                     {step === 1 && <EulaStep name={displayName} onNext={goNext} />}
-                    {step === 2 && <VideoStep name={displayName} onNext={goNext} />}
-                    {step === 3 && (
+                    {step === 2 && (
+                      <ConnectGitHubStep
+                        name={displayName}
+                        githubUsername={githubUsername}
+                        onConnected={(token, username) => {
+                          setGithubToken(token);
+                          setGithubUsername(username);
+                        }}
+                        onNext={goNext}
+                      />
+                    )}
+                    {step === 3 && <VideoStep name={displayName} onNext={goNext} />}
+                    {step === 4 && (
                       <ThemesStep name={displayName} themes={assignedThemes} onNext={goNext} />
                     )}
-                    {step === 4 && (
+                    {step === 5 && (
                       <CreateAppStep name={displayName} siteSlug={siteSlug} onNext={goNext} />
                     )}
-                    {step === 5 && (
+                    {step === 6 && (
                       <CreateApiStep name={displayName} onNext={goNext} />
                     )}
-                    {step === 6 && (
+                    {step === 7 && (
                       <RegisterAppStep
                         name={displayName}
                         invitation={invitation ? { id: invitation.id, site_slug: invitation.site_slug, participant_app_slug: invitation.participant_app_slug, provider_sync_status: invitation.provider_sync_status } : undefined}
@@ -1925,15 +2187,37 @@ export const Onboarding: React.FC = () => {
                         onSuccess={(slug, key) => {
                           setRegisteredAppSlug(slug);
                           setRegisteredApiKey(key);
+                          // Inject secrets in background now that we have Taruvi credentials
+                          if (githubToken && codespaceName) {
+                            const siteUrl = siteSlug ? `https://${siteSlug}.taruvi.cloud` : "";
+                            setSecretsStatus("injecting");
+                            injectCodespaceSecrets({
+                              githubToken,
+                              codespaceName,
+                              taruvi_site_url: siteUrl,
+                              taruvi_app_slug: slug,
+                              taruvi_api_key: key,
+                            })
+                              .then(() => setSecretsStatus("done"))
+                              .catch((err) => {
+                                console.error("[codespace] secrets injection failed:", githubUsername, err);
+                                setSecretsStatus("failed");
+                              });
+                          }
                         }}
                       />
                     )}
-                    {step === 7 && (
+                    {step === 8 && (
                       <CodespaceStep
                         name={displayName}
                         siteSlug={siteSlug}
                         registeredAppSlug={registeredAppSlug}
                         registeredApiKey={registeredApiKey}
+                        githubUsername={githubUsername}
+                        codespaceWebUrl={codespaceWebUrl}
+                        codespaceStatus={codespaceStatus}
+                        codespaceError={codespaceError}
+                        secretsStatus={secretsStatus}
                       />
                     )}
                   </Box>
