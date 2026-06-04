@@ -149,7 +149,7 @@ export const ThemesList: React.FC = () => {
         <Box>
           <Typography variant="h4">Themes</Typography>
           <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-            Manage hackathon themes — assign up to 3 per company
+            Manage Build-a-thon themes — assign up to 3 per company
           </Typography>
         </Box>
         <Button

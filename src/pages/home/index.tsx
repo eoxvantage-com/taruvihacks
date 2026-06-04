@@ -132,7 +132,7 @@ export const Home = () => {
                   letterSpacing: "-0.01em",
                 }}
               >
-                Hackathon Admin
+                Build-a-thon Admin
               </Typography>
               <Typography
                 sx={{

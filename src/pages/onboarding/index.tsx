@@ -590,7 +590,7 @@ function HelperMessage({ children }: { children: React.ReactNode }) {
           mb: 0.75,
         }}
       >
-        Hackathon Helper
+        Build-a-thon Helper
       </Typography>
       <Typography variant="body2" sx={{ color: "#1a2a3a", lineHeight: 1.7 }}>
         {children}
@@ -739,7 +739,7 @@ function VideoStep({ name, onNext }: { name: string; onNext: () => void }) {
       </Typography>
 
       <HelperMessage>
-        Let us introduce you to TaruviBase, {name} — the platform you will be building on throughout this hackathon. This video provides a comprehensive overview of its capabilities and architecture. Please watch it in full before proceeding to the workspace setup.
+        Let us introduce you to TaruviBase, {name} — the platform you will be building on throughout this Build-a-thon. This video provides a comprehensive overview of its capabilities and architecture. Please watch it in full before proceeding to the workspace setup.
       </HelperMessage>
 
       <Box
@@ -789,11 +789,11 @@ function ThemesStep({
         variant="h4"
         sx={{ fontFamily: "'Quicksand', sans-serif", fontWeight: 700, mb: 0.75 }}
       >
-        Your Hackathon Themes
+        Your Build-a-thon Themes
       </Typography>
 
       <HelperMessage>
-        Now that you have an understanding of TaruviBase, {name}, here are the themes assigned to your company for this hackathon. These are the problem areas your team will be building solutions for. Take a moment to review them before setting up your workspace.
+        Now that you have an understanding of TaruviBase, {name}, here are the themes assigned to your company for this Build-a-thon. These are the problem areas your team will be building solutions for. Take a moment to review them before setting up your workspace.
       </HelperMessage>
 
       {themes.length === 0 ? (
@@ -903,7 +903,7 @@ function CreateAppStep({
       </Typography>
 
       <HelperMessage>
-        Your Taruvi site is live and ready, {name}. The first step is to create an application on your site console — this will serve as the container for all the data models and APIs you build during the hackathon. Follow the screenshots below in sequence to complete the setup.
+        Your Taruvi site is live and ready, {name}. The first step is to create an application on your site console — this will serve as the container for all the data models and APIs you build during the Build-a-thon. Follow the screenshots below in sequence to complete the setup.
       </HelperMessage>
 
       {/* Site console link */}
@@ -1604,15 +1604,15 @@ function HackathonPickerScreen({
       }}
     >
       <Box sx={{ ...glass, borderRadius: "24px", p: 5, maxWidth: 560, width: "100%" }}>
-        <Label>Select Hackathon</Label>
+        <Label>Select Build-a-thon</Label>
         <Typography
           variant="h5"
           sx={{ fontFamily: "'Quicksand', sans-serif", fontWeight: 700, mb: 1 }}
         >
-          Which hackathon are you setting up?
+          Which Build-a-thon are you setting up?
         </Typography>
         <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-          You have invitations to multiple hackathons. Pick the one you'd like to work on now.
+          You have invitations to multiple Build-a-thons. Pick the one you'd like to work on now.
         </Typography>
         <Stack spacing={1.5}>
           {invitations.map((inv) => {
@@ -1991,7 +1991,7 @@ export const Onboarding: React.FC = () => {
           <Box
             component="img"
             src={BUILDER_URL}
-            alt="Hackathon Helper"
+            alt="Build-a-thon Helper"
             sx={{
               width: { xs: 90, md: 130 },
               height: "auto",
