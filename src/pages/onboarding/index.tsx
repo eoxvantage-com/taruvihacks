@@ -1404,7 +1404,7 @@ function CodespaceStep({
   };
 
   const noGitHub = !githubUsername;
-  const isReady = codespaceStatus === "ready" && secretsStatus === "done";
+  const isReady = codespaceStatus === "ready" && secretsStatus !== "injecting";
   const hasError = codespaceStatus === "error" || codespaceStatus === "timeout";
   const isWorking = !noGitHub && !isReady && !hasError;
 
@@ -1570,7 +1570,7 @@ function CodespaceStep({
           <Collapse in={envOpen}>
             <Box sx={{ px: 3, pb: 2.5 }}>
               <Typography variant="caption" color="text.secondary" sx={{ display: "block", mb: 1.5, lineHeight: 1.6 }}>
-                {noGitHub
+                {(noGitHub || secretsStatus === "failed")
                   ? <>When the Codespace opens, click <strong>⚙️ Setup .env</strong>, paste these values, then save. Click <strong>🔑 Connect Codex</strong> to complete integration.</>
                   : "These values have been automatically injected into your Codespace. Kept here as a reference."}
               </Typography>
