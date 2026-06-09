@@ -11,6 +11,10 @@ import {
   Alert,
   Collapse,
   IconButton,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
 } from "@mui/material";
 import {
   useGetIdentity,
@@ -27,8 +31,10 @@ import ChevronRightRoundedIcon from "@mui/icons-material/ChevronRightRounded";
 import ExpandMoreRoundedIcon from "@mui/icons-material/ExpandMoreRounded";
 import ContentCopyRoundedIcon from "@mui/icons-material/ContentCopyRounded";
 import GitHubIcon from "@mui/icons-material/GitHub";
+import DescriptionRoundedIcon from "@mui/icons-material/DescriptionRounded";
 import {
   syncParticipantProviderSecret,
+  acceptEula,
   createCodespace,
   injectCodespaceSecrets,
   pollCodespaceStatus,
@@ -332,28 +338,37 @@ interface CompanyTheme {
 }
 
 // ─── Design tokens ─────────────────────────────────────────────────────────
-const BLUE = "#1E88E5";
-const BLUE_LIGHT = "rgba(30, 136, 229, 0.10)";
-const BLUE_BORDER = "rgba(30, 136, 229, 0.22)";
+// Primary palette
+const MIDNIGHT_NAVY = "#020C27";
+const DEEP_NAVY = "#0C1944";
+const ROYAL_BLUE = "#1E3A8A";
+const SLATE_BLUE = "#47588B";
+
+// Aliases used throughout
+const BLUE = DEEP_NAVY;
+const BLUE_LIGHT = "rgba(12, 25, 68, 0.06)";
+const BLUE_BORDER = "rgba(12, 25, 68, 0.14)";
+
+// Accent / surface palette
+const MIST_GRAY = "#D6DCE8";
+const PAPER = "#F0F2F8";
 
 const glass: React.CSSProperties = {
-  background: "rgba(255, 255, 255, 0.74)",
-  backdropFilter: "blur(24px) saturate(200%)",
-  WebkitBackdropFilter: "blur(24px) saturate(200%)",
-  border: "1px solid rgba(255, 255, 255, 0.88)",
+  background: "#FFFFFF",
+  border: "1px solid #F4F6F9",
+  borderTop: `32px solid ${MIST_GRAY}`,
   borderRadius: 24,
-  boxShadow:
-    "0 8px 40px rgba(30, 80, 160, 0.10), 0 1.5px 4px rgba(0,0,0,0.04)",
+  boxShadow: "0 4px 24px rgba(2, 12, 39, 0.08), 0 1px 3px rgba(0,0,0,0.04)",
 };
 
 const glassBlue: React.CSSProperties = {
   ...glass,
-  background: "rgba(232, 244, 255, 0.82)",
-  border: `1px solid ${BLUE_BORDER}`,
+  background: PAPER,
+  border: "1px solid #F4F6F9",
+  borderTop: `32px solid ${MIST_GRAY}`,
 };
 
-const PAGE_BG =
-  "linear-gradient(140deg, #e4effc 0%, #dce9f8 30%, #eef5ff 65%, #e8f0fb 100%)";
+const PAGE_BG = "#EEF1F8";
 
 // ─── Slide animation ────────────────────────────────────────────────────────
 const slideVariants = {
@@ -393,11 +408,11 @@ function StepDots({
             borderRadius: 999,
             backgroundColor:
               i < current
-                ? BLUE
+                ? DEEP_NAVY
                 : i === current
-                ? BLUE
-                : "rgba(0,0,0,0.13)",
-            opacity: i < current ? 0.45 : 1,
+                ? DEEP_NAVY
+                : MIST_GRAY,
+            opacity: i < current ? 0.35 : 1,
           }}
         />
       ))}
@@ -442,7 +457,7 @@ function SplashScreen({ onDone }: { onDone: () => void }) {
           height: 480,
           borderRadius: "50%",
           background:
-            "radial-gradient(circle, rgba(30,136,229,0.18) 0%, transparent 70%)",
+            "radial-gradient(circle, rgba(12,25,68,0.12) 0%, transparent 70%)",
           top: "50%",
           left: "50%",
           transform: "translate(-50%, -50%)",
@@ -458,7 +473,7 @@ function SplashScreen({ onDone }: { onDone: () => void }) {
           height: 320,
           borderRadius: "50%",
           background:
-            "radial-gradient(circle, rgba(10,147,196,0.16) 0%, transparent 70%)",
+            "radial-gradient(circle, rgba(30,58,138,0.10) 0%, transparent 70%)",
           top: "42%",
           left: "54%",
           transform: "translate(-50%, -50%)",
@@ -500,7 +515,7 @@ function SplashScreen({ onDone }: { onDone: () => void }) {
             fontFamily: "'Quicksand', sans-serif",
             fontWeight: 800,
             fontSize: { xs: 30, md: 38 },
-            color: "#003652",
+            color: DEEP_NAVY,
             letterSpacing: "-0.025em",
             lineHeight: 1,
           }}
@@ -520,7 +535,7 @@ function SplashScreen({ onDone }: { onDone: () => void }) {
           sx={{
             fontFamily: "'Open Sans', sans-serif",
             fontSize: 15,
-            color: "rgba(0,54,82,0.52)",
+            color: "rgba(2, 12, 39, 0.5)",
             mt: 1.25,
             letterSpacing: "0.01em",
           }}
@@ -541,7 +556,7 @@ function SplashScreen({ onDone }: { onDone: () => void }) {
             initial={{ width: "0%" }}
             animate={{ width: "100%" }}
             transition={{ delay: 1.15, duration: 1.4, ease: "easeInOut" }}
-            style={{ height: "100%", borderRadius: 999, background: `linear-gradient(90deg, ${BLUE}, #0A93C4)` }}
+            style={{ height: "100%", borderRadius: 999, background: `linear-gradient(90deg, ${DEEP_NAVY}, ${ROYAL_BLUE})` }}
           />
         </Box>
       </motion.div>
@@ -595,9 +610,9 @@ function HelperMessage({ children }: { children: React.ReactNode }) {
           mb: 0.75,
         }}
       >
-        Build-a-thon Helper
+        Taru
       </Typography>
-      <Typography variant="body2" sx={{ color: "#1a2a3a", lineHeight: 1.7 }}>
+      <Typography variant="body2" sx={{ color: "#020C27", lineHeight: 1.7 }}>
         {children}
       </Typography>
     </Box>
@@ -607,11 +622,9 @@ function HelperMessage({ children }: { children: React.ReactNode }) {
 // ─── Step 0 — Welcome ───────────────────────────────────────────────────────
 function WelcomeStep({
   name,
-  companyName,
   onNext,
 }: {
   name: string;
-  companyName?: string;
   onNext: () => void;
 }) {
   return (
@@ -622,27 +635,23 @@ function WelcomeStep({
           fontFamily: "'Quicksand', sans-serif",
           fontWeight: 700,
           mb: 1,
-          color: "#1a2a3a",
+          color: "#020C27",
         }}
       >
         Hey {name}! 👋
       </Typography>
 
-      {companyName && (
-        <Box sx={{ mb: 3 }}>
-          <Chip
-            label={companyName}
-            size="small"
-            sx={{
-              bgcolor: BLUE_LIGHT,
-              color: "#1565C0",
-              fontFamily: "'Quicksand', sans-serif",
-              fontWeight: 700,
-              fontSize: 12,
-            }}
-          />
-        </Box>
-      )}
+      <Typography
+        variant="body1"
+        sx={{
+          color: "text.secondary",
+          mb: 3,
+          fontFamily: "'Open Sans', sans-serif",
+          fontSize: { xs: 15, md: 16 },
+        }}
+      >
+        Welcome to the TaruviBase Build-a-Thon. Come see what is possible!
+      </Typography>
 
       <Button
         variant="contained"
@@ -658,72 +667,125 @@ function WelcomeStep({
 }
 
 // ─── Step 1 — EULA ──────────────────────────────────────────────────────────
-function EulaStep({ name, onNext }: { name: string; onNext: () => void }) {
-  const [agreed, setAgreed] = useState(false);
-
+// ─── Step 1 — Introduction ───────────────────────────────────────────────────
+function IntroStep({ onNext }: { onNext: () => void }) {
   return (
     <Box>
       <Typography
         variant="h4"
-        sx={{ fontFamily: "'Quicksand', sans-serif", fontWeight: 700, mb: 0.75 }}
+        sx={{ fontFamily: "'Quicksand', sans-serif", fontWeight: 700, mb: 2 }}
       >
-        End User License Agreement
+        What Is a Build-a-Thon?
       </Typography>
 
-      <HelperMessage>
-        Before we get started, {name}, please read and accept the EOX Build-a-thon End User License Agreement below. You must agree to the terms to continue.
-      </HelperMessage>
-
-      <Box
-        sx={{
-          ...glass,
-          borderRadius: "16px",
-          p: 3,
-          mb: 3,
-          maxHeight: 340,
-          overflowY: "auto",
-        }}
-      >
+      <Box sx={{ ...glassBlue, borderRadius: "16px", p: 4, mb: 4 }}>
         <Typography
-          variant="body2"
-          sx={{
-            color: "#1a2a3a",
-            lineHeight: 1.75,
-            whiteSpace: "pre-wrap",
-            fontFamily: "'Open Sans', sans-serif",
-            fontSize: 13,
-          }}
+          variant="body1"
+          sx={{ color: "#020C27", lineHeight: 1.85, fontFamily: "'Open Sans', sans-serif", mb: 2.5 }}
         >
-          {EULA_TEXT}
+          A Build-a-Thon is a hands-on, fast-paced event where teams move from idea to working
+          prototype in just a few hours. No lengthy planning cycles, no formal implementation
+          projects. Just a team, a challenge, and the tools to build.
+        </Typography>
+        <Typography
+          variant="body1"
+          sx={{ color: "#020C27", lineHeight: 1.85, fontFamily: "'Open Sans', sans-serif" }}
+        >
+          Today you will explore TaruviBase, experiment with vibe coding, and see how quickly a
+          concept can become something real. At the end of the session, your team will present
+          what you built.
         </Typography>
       </Box>
-
-      <FormControlLabel
-        control={
-          <Checkbox
-            checked={agreed}
-            onChange={(e) => setAgreed(e.target.checked)}
-            sx={{ color: BLUE, "&.Mui-checked": { color: BLUE } }}
-          />
-        }
-        label={
-          <Typography variant="body2" sx={{ color: "#1a2a3a", lineHeight: 1.5 }}>
-            I have read and agree to the EOX Build-a-thon End User License Agreement
-          </Typography>
-        }
-        sx={{ mb: 3, alignItems: "flex-start" }}
-      />
 
       <Button
         variant="contained"
         size="large"
         endIcon={<ArrowForwardRoundedIcon />}
         onClick={onNext}
-        disabled={!agreed}
         sx={{ px: 4 }}
       >
-        I Agree &amp; Continue
+        Got It, Let's Go
       </Button>
+    </Box>
+  );
+}
+
+// ─── Step 2 — EULA ──────────────────────────────────────────────────────────
+function EulaStep({
+  invitationId,
+  onNext,
+}: {
+  name: string;
+  invitationId?: string;
+  onNext: () => void;
+}) {
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [agreed, setAgreed] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  const handleAgree = async () => {
+    setDialogOpen(false);
+    setSaving(true);
+    if (invitationId) await acceptEula(invitationId).catch(() => {});
+    setSaving(false);
+    onNext();
+  };
+
+  return (
+    <Box sx={{ py: 2, textAlign: "center" }}>
+      <Typography variant="h4" sx={{ fontFamily: "'Quicksand', sans-serif", fontWeight: 700, mb: 1 }}>
+        End User License Agreement
+      </Typography>
+      <Typography variant="body2" color="text.secondary" sx={{ mb: 4, maxWidth: 420, mx: "auto" }}>
+        Please read and agree to our EULA before continuing with the Build-a-thon setup.
+      </Typography>
+
+      <Button
+        variant="outlined"
+        size="large"
+        onClick={() => setDialogOpen(true)}
+        disabled={saving}
+        sx={{ px: 5, py: 1.5, fontSize: 15 }}
+      >
+        {saving ? <CircularProgress size={18} color="inherit" /> : "Read & Sign EULA"}
+      </Button>
+
+      {/* EULA Dialog */}
+      <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)} maxWidth="md" fullWidth scroll="paper">
+        <DialogTitle sx={{ fontFamily: "'Quicksand', sans-serif", fontWeight: 700 }}>
+          End User License Agreement
+        </DialogTitle>
+        <DialogContent dividers>
+          <Typography
+            variant="body2"
+            sx={{ whiteSpace: "pre-wrap", lineHeight: 1.8, color: "#020C27", fontFamily: "'Open Sans', sans-serif", fontSize: 13 }}
+          >
+            {EULA_TEXT.replace("[Insert Date]", new Date().toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" }))}
+          </Typography>
+        </DialogContent>
+        <DialogActions sx={{ flexDirection: "column", alignItems: "stretch", gap: 1.5, p: 2.5 }}>
+          <FormControlLabel
+            control={
+              <Checkbox
+                checked={agreed}
+                onChange={(e) => setAgreed(e.target.checked)}
+                sx={{ color: BLUE, "&.Mui-checked": { color: BLUE } }}
+              />
+            }
+            label={
+              <Typography variant="body2" sx={{ color: "#020C27" }}>
+                I have read and agree to the EOX Build-a-thon End User License Agreement
+              </Typography>
+            }
+          />
+          <Stack direction="row" spacing={1} justifyContent="flex-end">
+            <Button variant="outlined" onClick={() => setDialogOpen(false)}>Close</Button>
+            <Button variant="contained" disabled={!agreed} onClick={handleAgree}>
+              I Agree &amp; Continue
+            </Button>
+          </Stack>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 }
@@ -846,7 +908,7 @@ function ThemesStep({
                 <Box
                   sx={{
                     height: 160,
-                    background: `linear-gradient(135deg, ${BLUE_LIGHT}, rgba(10,147,196,0.12))`,
+                    background: `linear-gradient(135deg, ${BLUE_LIGHT}, rgba(30,58,138,0.08))`,
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
@@ -933,7 +995,7 @@ function CreateAppStep({
                 fontFamily: "monospace",
                 fontSize: { xs: 14, sm: 17 },
                 fontWeight: 600,
-                color: "#003652",
+                color: "#020C27",
                 wordBreak: "break-all",
                 mt: 0.5,
               }}
@@ -1152,11 +1214,10 @@ function RegisterAppStep({
   name: string;
   invitation: { id: string; site_slug: string; participant_app_slug?: string; provider_sync_status?: string } | undefined;
   onNext: () => void;
-  onSuccess: (appSlug: string, apiKey: string) => void;
+  onSuccess: (appSlug: string) => void;
 }) {
   const alreadySynced = invitation?.provider_sync_status === "synced";
   const [appSlug, setAppSlug] = useState(invitation?.participant_app_slug ?? "");
-  const [appApiKey, setAppApiKey] = useState("");
   const [syncing, setSyncing] = useState(false);
   const [synced, setSynced] = useState(alreadySynced);
   const [syncError, setSyncError] = useState<string | null>(null);
@@ -1165,24 +1226,22 @@ function RegisterAppStep({
 
   const handleRegister = async () => {
     const slug = appSlug.trim();
-    const key = appApiKey.trim();
-    if (!slug || !key || !invitation || !siteUrl) return;
+    if (!slug || !invitation || !siteUrl) return;
     setSyncing(true);
     setSyncError(null);
     try {
       await syncParticipantProviderSecret({
         invitationId: invitation.id,
         participantAppSlug: slug,
-        participantApiKey: key,
         participantSiteUrl: siteUrl,
       });
-      onSuccess(slug, key);
+      onSuccess(slug);
       setSynced(true);
     } catch (err: unknown) {
       setSyncError(
         err instanceof Error
           ? err.message
-          : "Configuration failed. Check your app slug and API key, then try again."
+          : "Configuration failed. Check your app slug, then try again."
       );
     } finally {
       setSyncing(false);
@@ -1211,7 +1270,7 @@ function RegisterAppStep({
       </Typography>
 
       <HelperMessage>
-        Almost there, {name}! Paste in your app slug and the API key you generated in the previous step. This lets the platform configure your AI credentials automatically — no manual key entry needed in your Codespace.
+        Almost there, {name}! Enter your app slug below. The platform will configure your AI credentials automatically using your site key — no API key entry needed.
       </HelperMessage>
 
       {siteUrl && (
@@ -1235,7 +1294,7 @@ function RegisterAppStep({
                 fontFamily: "monospace",
                 fontSize: { xs: 13, sm: 16 },
                 fontWeight: 600,
-                color: "#003652",
+                color: "#020C27",
                 wordBreak: "break-all",
                 mt: 0.5,
               }}
@@ -1275,7 +1334,7 @@ function RegisterAppStep({
             variant="text"
             size="small"
             sx={{ mt: 2, color: "text.secondary", fontSize: 12 }}
-            onClick={() => { setSynced(false); setAppSlug(""); setAppApiKey(""); setSyncError(null); }}
+            onClick={() => { setSynced(false); setAppSlug(""); setSyncError(null); }}
           >
             Register a different app
           </Button>
@@ -1312,25 +1371,10 @@ function RegisterAppStep({
               </Typography>
             </Box>
 
-            <Box>
-              <Label>API Key</Label>
-              <input
-                style={inputStyle}
-                type="password"
-                placeholder="taruvi_..."
-                value={appApiKey}
-                onChange={(e) => setAppApiKey(e.target.value)}
-                disabled={syncing}
-              />
-              <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: "block" }}>
-                Generated from Settings → Connect → Generate API Key
-              </Typography>
-            </Box>
-
             <Button
               variant="contained"
               size="large"
-              disabled={!appSlug.trim() || !appApiKey.trim() || syncing || !invitation}
+              disabled={!appSlug.trim() || syncing || !invitation}
               onClick={handleRegister}
               startIcon={syncing ? <CircularProgress size={16} color="inherit" /> : undefined}
               sx={{ px: 4, alignSelf: "flex-start" }}
@@ -1368,7 +1412,6 @@ function CodespaceStep({
   name,
   siteSlug,
   registeredAppSlug,
-  registeredApiKey,
   githubUsername,
   codespaceWebUrl,
   codespaceStatus,
@@ -1378,7 +1421,6 @@ function CodespaceStep({
   name: string;
   siteSlug?: string;
   registeredAppSlug?: string;
-  registeredApiKey?: string;
   githubUsername?: string;
   codespaceWebUrl?: string;
   codespaceStatus: CodespaceStatus;
@@ -1389,10 +1431,9 @@ function CodespaceStep({
   const [copied, setCopied] = useState(false);
 
   const siteUrl = siteSlug ? `https://${siteSlug}.taruvi.cloud` : "";
-  const hasEnv = !!(siteUrl && registeredAppSlug && registeredApiKey);
-  const alreadyRegistered = !!(registeredAppSlug && !registeredApiKey);
+  const hasEnv = !!(siteUrl && registeredAppSlug);
   const envBlock = hasEnv
-    ? `TARUVI_SITE_URL=${siteUrl}\nTARUVI_APP_SLUG=${registeredAppSlug}\nTARUVI_API_KEY=${registeredApiKey}`
+    ? `TARUVI_SITE_URL=${siteUrl}\nTARUVI_APP_SLUG=${registeredAppSlug}`
     : "";
 
   const handleCopy = () => {
@@ -1404,14 +1445,17 @@ function CodespaceStep({
   };
 
   const noGitHub = !githubUsername;
-  const isReady = codespaceStatus === "ready" && secretsStatus === "done";
+  const isReady =
+    codespaceStatus === "ready" &&
+    (secretsStatus === "done" || secretsStatus === "failed");
   const hasError = codespaceStatus === "error" || codespaceStatus === "timeout";
   const isWorking = !noGitHub && !isReady && !hasError;
 
   let statusLabel = "Setting up your dev environment…";
   if (codespaceStatus === "creating") statusLabel = "Creating your Codespace…";
   else if (codespaceStatus === "polling") statusLabel = "Starting your Codespace…";
-  else if (secretsStatus === "injecting") statusLabel = "Configuring environment…";
+  else if (codespaceStatus === "ready" && secretsStatus === "injecting") statusLabel = "Configuring environment…";
+  else if (codespaceStatus === "ready" && secretsStatus === "idle") statusLabel = "Finishing setup…";
 
   const openUrl = codespaceWebUrl || CODESPACE_URL;
 
@@ -1471,7 +1515,7 @@ function CodespaceStep({
             size="small"
             sx={{
               bgcolor: BLUE_LIGHT,
-              color: "#1565C0",
+              color: "#1E3A8A",
               fontFamily: "'Quicksand', sans-serif",
               fontWeight: 700,
               border: `1px solid ${BLUE_BORDER}`,
@@ -1548,13 +1592,6 @@ function CodespaceStep({
         </Box>
       )}
 
-      {/* Already registered in a prior session */}
-      {alreadyRegistered && (
-        <Alert severity="success" sx={{ mb: 3, borderRadius: "12px" }}>
-          Your AI credentials were configured in a previous session for app <strong>{registeredAppSlug}</strong>. If you need your Taruvi connection values, open your app → Settings → Connect.
-        </Alert>
-      )}
-
       {/* Env values accordion — reference / fallback */}
       {hasEnv && (
         <Box sx={{ ...glassBlue, borderRadius: "16px", overflow: "hidden", mb: 2 }}>
@@ -1570,15 +1607,13 @@ function CodespaceStep({
           <Collapse in={envOpen}>
             <Box sx={{ px: 3, pb: 2.5 }}>
               <Typography variant="caption" color="text.secondary" sx={{ display: "block", mb: 1.5, lineHeight: 1.6 }}>
-                {noGitHub
-                  ? <>When the Codespace opens, click <strong>⚙️ Setup .env</strong>, paste these values, then save. Click <strong>🔑 Connect Codex</strong> to complete integration.</>
-                  : "These values have been automatically injected into your Codespace. Kept here as a reference."}
+                Your Taruvi environment values are automatically injected into your Codespace. Kept here as a reference.
               </Typography>
               <Box sx={{ position: "relative" }}>
-                <Box component="pre" sx={{ fontFamily: "monospace", fontSize: 12.5, lineHeight: 1.9, bgcolor: "rgba(255,255,255,0.7)", border: `1px solid ${BLUE_BORDER}`, borderRadius: "10px", p: 2, m: 0, whiteSpace: "pre-wrap", wordBreak: "break-all", color: "#003652", pr: 5 }}>
+                <Box component="pre" sx={{ fontFamily: "monospace", fontSize: 12.5, lineHeight: 1.9, bgcolor: "#FFFFFF", border: `1px solid ${BLUE_BORDER}`, borderRadius: "10px", p: 2, m: 0, whiteSpace: "pre-wrap", wordBreak: "break-all", color: "#020C27", pr: 5 }}>
                   {envBlock}
                 </Box>
-                <IconButton size="small" onClick={handleCopy} sx={{ position: "absolute", top: 6, right: 6, bgcolor: copied ? "success.light" : "rgba(255,255,255,0.9)", border: `1px solid ${BLUE_BORDER}`, "&:hover": { bgcolor: BLUE_LIGHT } }}>
+                <IconButton size="small" onClick={handleCopy} sx={{ position: "absolute", top: 6, right: 6, bgcolor: copied ? "success.light" : "#FFFFFF", border: `1px solid ${BLUE_BORDER}`, "&:hover": { bgcolor: BLUE_LIGHT } }}>
                   {copied ? <CheckCircleRoundedIcon sx={{ fontSize: 16, color: "success.dark" }} /> : <ContentCopyRoundedIcon sx={{ fontSize: 16, color: BLUE }} />}
                 </IconButton>
               </Box>
@@ -1826,7 +1861,7 @@ function HackathonPickerScreen({
                         fontFamily: "'Quicksand', sans-serif",
                         fontWeight: 700,
                         fontSize: 16,
-                        color: "#1a2a3a",
+                        color: "#020C27",
                       }}
                     >
                       {co?.name ?? inv.site_slug}
@@ -1853,7 +1888,6 @@ export const Onboarding: React.FC = () => {
   const [dir, setDir] = useState(1);
   const [selectedInvitationId, setSelectedInvitationId] = useState<string | null>(null);
   const [registeredAppSlug, setRegisteredAppSlug] = useState<string>("");
-  const [registeredApiKey, setRegisteredApiKey] = useState<string>("");
   const [githubToken, setGithubToken] = useState<string>("");
   const [githubUsername, setGithubUsername] = useState<string>("");
   const [codespaceName, setCodespaceName] = useState<string>("");
@@ -1929,6 +1963,26 @@ export const Onboarding: React.FC = () => {
     }
   }, [invitation?.provider_sync_status, invitation?.participant_app_slug]);
 
+
+  // Inject secrets once both codespace name AND app slug are available.
+  // Handles the race where codespaceName arrives after the user already registered their app.
+  useEffect(() => {
+    if (!githubToken || !codespaceName || !registeredAppSlug) return;
+    if (secretsStatus !== "idle") return;
+    const siteUrl = siteSlug ? `https://${siteSlug}.taruvi.cloud` : "";
+    setSecretsStatus("injecting");
+    injectCodespaceSecrets({
+      githubToken,
+      codespaceName,
+      taruvi_site_url: siteUrl,
+      taruvi_app_slug: registeredAppSlug,
+    })
+      .then(() => setSecretsStatus("done"))
+      .catch((err) => {
+        console.error("[codespace] secrets injection failed:", githubUsername, err);
+        setSecretsStatus("failed");
+      });
+  }, [codespaceName, registeredAppSlug]);
 
   // Background codespace creation — fires once when GitHub token is available
   useEffect(() => {
@@ -2153,12 +2207,12 @@ export const Onboarding: React.FC = () => {
                     {step === 0 && (
                       <WelcomeStep
                         name={displayName}
-                        companyName={company?.name}
                         onNext={goNext}
                       />
                     )}
-                    {step === 1 && <EulaStep name={displayName} onNext={goNext} />}
-                    {step === 2 && (
+                    {step === 1 && <IntroStep onNext={goNext} />}
+                    {step === 2 && <EulaStep name={displayName} invitationId={invitation?.id} onNext={goNext} />}
+                    {step === 3 && (
                       <ConnectGitHubStep
                         name={displayName}
                         githubUsername={githubUsername}
@@ -2169,7 +2223,6 @@ export const Onboarding: React.FC = () => {
                         onNext={goNext}
                       />
                     )}
-                    {step === 3 && <VideoStep name={displayName} onNext={goNext} />}
                     {step === 4 && (
                       <ThemesStep name={displayName} themes={assignedThemes} onNext={goNext} />
                     )}
@@ -2184,26 +2237,8 @@ export const Onboarding: React.FC = () => {
                         name={displayName}
                         invitation={invitation ? { id: invitation.id, site_slug: invitation.site_slug, participant_app_slug: invitation.participant_app_slug, provider_sync_status: invitation.provider_sync_status } : undefined}
                         onNext={goNext}
-                        onSuccess={(slug, key) => {
+                        onSuccess={(slug) => {
                           setRegisteredAppSlug(slug);
-                          setRegisteredApiKey(key);
-                          // Inject secrets in background now that we have Taruvi credentials
-                          if (githubToken && codespaceName) {
-                            const siteUrl = siteSlug ? `https://${siteSlug}.taruvi.cloud` : "";
-                            setSecretsStatus("injecting");
-                            injectCodespaceSecrets({
-                              githubToken,
-                              codespaceName,
-                              taruvi_site_url: siteUrl,
-                              taruvi_app_slug: slug,
-                              taruvi_api_key: key,
-                            })
-                              .then(() => setSecretsStatus("done"))
-                              .catch((err) => {
-                                console.error("[codespace] secrets injection failed:", githubUsername, err);
-                                setSecretsStatus("failed");
-                              });
-                          }
                         }}
                       />
                     )}
@@ -2212,7 +2247,6 @@ export const Onboarding: React.FC = () => {
                         name={displayName}
                         siteSlug={siteSlug}
                         registeredAppSlug={registeredAppSlug}
-                        registeredApiKey={registeredApiKey}
                         githubUsername={githubUsername}
                         codespaceWebUrl={codespaceWebUrl}
                         codespaceStatus={codespaceStatus}
@@ -2257,7 +2291,7 @@ export const Onboarding: React.FC = () => {
       </AnimatePresence>
 
       {/* Builder + bubble — outside all glass/motion containers so position:fixed works */}
-      {splashDone && step === 0 && (
+      {splashDone && (step === 0 || step === 2) && (
         <Box
           sx={{
             position: "fixed",
@@ -2275,7 +2309,7 @@ export const Onboarding: React.FC = () => {
           <Box
             component="img"
             src={BUILDER_URL}
-            alt="Build-a-thon Helper"
+            alt="Taru"
             sx={{
               width: { xs: 90, md: 130 },
               height: "auto",
@@ -2293,7 +2327,7 @@ export const Onboarding: React.FC = () => {
                 bottom: 16,
                 width: 14,
                 height: 14,
-                background: "rgba(255,255,255,0.96)",
+                background: "#FFFFFF",
                 borderTop: `1px solid ${BLUE_BORDER}`,
                 borderLeft: `1px solid ${BLUE_BORDER}`,
                 transform: "rotate(45deg)",
@@ -2301,7 +2335,7 @@ export const Onboarding: React.FC = () => {
             />
             <Box
               sx={{
-                background: "rgba(255,255,255,0.96)",
+                background: "#FFFFFF",
                 border: `1px solid ${BLUE_BORDER}`,
                 borderRadius: "12px",
                 px: 2,
@@ -2322,10 +2356,13 @@ export const Onboarding: React.FC = () => {
                   mb: 0.5,
                 }}
               >
-                Build-a-thon Helper
+                Taru
               </Typography>
-              <Typography variant="body2" sx={{ color: "#1a2a3a", lineHeight: 1.6, fontSize: 14 }}>
-                Welcome to Build-a-thon! I'll walk you through every step — TaruviBase intro, themes, and workspace setup. Follow along and you'll be building in no time!
+              <Typography variant="body2" sx={{ color: "#020C27", lineHeight: 1.6, fontSize: 14 }}>
+                {step === 0
+                ? "Hello! I am Taru, your guide for today. I will walk you through everything from your first look at TaruviBase to launching your workspace. Let's get started!"
+                : `Before we dive in, ${displayName.split(" ")[0]}! Please take a moment to read our End User License Agreement. Click the button to open it, check the box once you've read it, then hit Continue.`
+                }
               </Typography>
             </Box>
           </Box>

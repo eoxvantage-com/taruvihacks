@@ -135,15 +135,17 @@ export async function deleteCompanyInvitations(companyId: string): Promise<void>
 export async function syncParticipantProviderSecret(params: {
   invitationId: string;
   participantAppSlug: string;
-  participantApiKey: string;
   participantSiteUrl: string;
 }): Promise<Record<string, unknown>> {
   return callFunction("sync-provider-secret", {
     invitation_id: params.invitationId,
     participant_app_slug: params.participantAppSlug,
-    participant_api_key: params.participantApiKey,
     participant_site_url: params.participantSiteUrl,
   });
+}
+
+export async function acceptEula(invitationId: string): Promise<void> {
+  await callFunction("accept-eula", { invitation_id: invitationId });
 }
 
 // ─── GitHub OAuth + Codespace ─────────────────────────────────────────────────
@@ -185,14 +187,12 @@ export async function injectCodespaceSecrets(params: {
   codespaceName: string;
   taruvi_site_url: string;
   taruvi_app_slug: string;
-  taruvi_api_key: string;
 }): Promise<{ success: boolean }> {
   const result = await callFunction("github-inject-secrets", {
     github_token: params.githubToken,
     codespace_name: params.codespaceName,
     taruvi_site_url: params.taruvi_site_url,
     taruvi_app_slug: params.taruvi_app_slug,
-    taruvi_api_key: params.taruvi_api_key,
   });
   return { success: result.success as boolean };
 }

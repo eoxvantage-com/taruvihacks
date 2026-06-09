@@ -91,7 +91,7 @@ export const Home = () => {
       bg: "#fff8e1",
     },
     {
-      label: "NDA Signed",
+      label: "EULA Signed",
       value: totalNda,
       icon: <CheckCircleRoundedIcon />,
       color: "#008751",

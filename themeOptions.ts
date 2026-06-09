@@ -100,9 +100,9 @@ export const taruviTokens = {
 
   // Primary button states (filled blue button system)
   button: {
-    primaryDefault: '#1E88E5',
-    primaryHover: '#1565C0',
-    primaryActive: '#0D47A1',
+    primaryDefault: '#1E3A6E',
+    primaryHover: '#162D58',
+    primaryActive: '#0F2040',
     primaryDisabled: '#BBDEFB',
     primaryDisabledText: '#999999',
   },

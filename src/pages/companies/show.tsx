@@ -730,11 +730,18 @@ export const CompanyShow: React.FC = () => {
                     <TableCell><Typography variant="body2" fontWeight={500}>{inv.email}</Typography></TableCell>
                     <TableCell><StatusChip status={inv.invite_status} /></TableCell>
                     <TableCell>
-                      {inv.provider_sync_status === "synced"
-                        ? <Tooltip title={inv.participant_app_slug ?? ""}><Chip label="Registered" color="success" size="small" /></Tooltip>
-                        : inv.provider_sync_status === "error"
-                        ? <Chip label="Error" color="error" size="small" />
-                        : <Chip label="Pending" color="default" size="small" />}
+                      {inv.provider_sync_status === "synced" && inv.participant_app_slug ? (
+                        <Stack spacing={0.25}>
+                          <Typography variant="body2" sx={{ fontFamily: "monospace", fontWeight: 600, fontSize: 12 }}>
+                            {inv.participant_app_slug}
+                          </Typography>
+                          <Chip label="Synced" color="success" size="small" sx={{ width: "fit-content" }} />
+                        </Stack>
+                      ) : inv.provider_sync_status === "error" ? (
+                        <Chip label="Sync Error" color="error" size="small" />
+                      ) : (
+                        <Typography variant="body2" color="text.disabled">—</Typography>
+                      )}
                     </TableCell>
                     <TableCell>
                       <Typography variant="body2" color="text.secondary">
