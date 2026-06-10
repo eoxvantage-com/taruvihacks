@@ -1435,22 +1435,7 @@ function CodespaceStep({
   codespaceError?: string;
   secretsStatus: SecretsStatus;
 }) {
-  const [envOpen, setEnvOpen] = useState(false);
-  const [copied, setCopied] = useState(false);
-
   const siteUrl = siteSlug ? `https://${siteSlug}.taruvi.cloud` : "";
-  const hasEnv = !!(siteUrl && registeredAppSlug);
-  const envBlock = hasEnv
-    ? `TARUVI_SITE_URL=${siteUrl}\nTARUVI_APP_SLUG=${registeredAppSlug}`
-    : "";
-
-  const handleCopy = () => {
-    if (!envBlock) return;
-    navigator.clipboard.writeText(envBlock).then(() => {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    });
-  };
 
   const noGitHub = !githubUsername;
   const isReady =
@@ -1597,36 +1582,6 @@ function CodespaceStep({
               Open GitHub Codespaces directly →
             </a>
           </Typography>
-        </Box>
-      )}
-
-      {/* Env values accordion — reference / fallback */}
-      {hasEnv && (
-        <Box sx={{ ...glassBlue, borderRadius: "16px", overflow: "hidden", mb: 2 }}>
-          <Box
-            onClick={() => setEnvOpen((o) => !o)}
-            sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", px: 3, py: 2, cursor: "pointer", userSelect: "none" }}
-          >
-            <Typography sx={{ fontFamily: "'Quicksand', sans-serif", fontWeight: 700, fontSize: 14, color: BLUE }}>
-              Your environment values
-            </Typography>
-            <ExpandMoreRoundedIcon sx={{ color: BLUE, fontSize: 22, transform: envOpen ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 0.2s" }} />
-          </Box>
-          <Collapse in={envOpen}>
-            <Box sx={{ px: 3, pb: 2.5 }}>
-              <Typography variant="caption" color="text.secondary" sx={{ display: "block", mb: 1.5, lineHeight: 1.6 }}>
-                Your Taruvi environment values are automatically injected into your Codespace. Kept here as a reference.
-              </Typography>
-              <Box sx={{ position: "relative" }}>
-                <Box component="pre" sx={{ fontFamily: "monospace", fontSize: 12.5, lineHeight: 1.9, bgcolor: "#FFFFFF", border: `1px solid ${BLUE_BORDER}`, borderRadius: "10px", p: 2, m: 0, whiteSpace: "pre-wrap", wordBreak: "break-all", color: "#020C27", pr: 5 }}>
-                  {envBlock}
-                </Box>
-                <IconButton size="small" onClick={handleCopy} sx={{ position: "absolute", top: 6, right: 6, bgcolor: copied ? "success.light" : "#FFFFFF", border: `1px solid ${BLUE_BORDER}`, "&:hover": { bgcolor: BLUE_LIGHT } }}>
-                  {copied ? <CheckCircleRoundedIcon sx={{ fontSize: 16, color: "success.dark" }} /> : <ContentCopyRoundedIcon sx={{ fontSize: 16, color: BLUE }} />}
-                </IconButton>
-              </Box>
-            </Box>
-          </Collapse>
         </Box>
       )}
 
