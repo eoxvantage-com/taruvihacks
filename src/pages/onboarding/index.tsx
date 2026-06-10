@@ -724,11 +724,11 @@ function EulaStep({
         <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 1.5, my: 3 }}>
           <CheckCircleRoundedIcon sx={{ fontSize: 52, color: "#2e7d32" }} />
           <Typography variant="body1" sx={{ fontWeight: 600, color: "#2e7d32" }}>
-            Already signed
+            You've already agreed to the EULA
           </Typography>
           {signedDate && (
             <Typography variant="body2" color="text.secondary">
-              Agreed on {signedDate}
+              Read and accepted on {signedDate}
             </Typography>
           )}
         </Box>
