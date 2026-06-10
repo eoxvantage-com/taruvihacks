@@ -619,7 +619,7 @@ function HelperMessage({ children }: { children: React.ReactNode }) {
   );
 }
 
-// ─── Step 0 — Welcome ───────────────────────────────────────────────────────
+// ─── Step 0 — Welcome + Intro (combined) ────────────────────────────────────
 function WelcomeStep({
   name,
   onNext,
@@ -628,7 +628,7 @@ function WelcomeStep({
   onNext: () => void;
 }) {
   return (
-    <Box sx={{ py: 2, textAlign: "center" }}>
+    <Box>
       <Typography
         variant="h3"
         sx={{
@@ -651,31 +651,6 @@ function WelcomeStep({
         }}
       >
         Welcome to the TaruviBase Build-a-Thon. Come see what is possible!
-      </Typography>
-
-      <Button
-        variant="contained"
-        size="large"
-        endIcon={<ArrowForwardRoundedIcon />}
-        onClick={onNext}
-        sx={{ px: 4 }}
-      >
-        Let's Go!
-      </Button>
-    </Box>
-  );
-}
-
-// ─── Step 1 — EULA ──────────────────────────────────────────────────────────
-// ─── Step 1 — Introduction ───────────────────────────────────────────────────
-function IntroStep({ onNext }: { onNext: () => void }) {
-  return (
-    <Box>
-      <Typography
-        variant="h4"
-        sx={{ fontFamily: "'Quicksand', sans-serif", fontWeight: 700, mb: 2 }}
-      >
-        What Is a Build-a-Thon?
       </Typography>
 
       <Box sx={{ ...glassBlue, borderRadius: "16px", p: 4, mb: 4 }}>
@@ -704,7 +679,7 @@ function IntroStep({ onNext }: { onNext: () => void }) {
         onClick={onNext}
         sx={{ px: 4 }}
       >
-        Got It, Let's Go
+        Let's Go!
       </Button>
     </Box>
   );
@@ -1801,7 +1776,7 @@ function ConnectGitHubStep({
 }
 
 // ─── Main Onboarding component ───────────────────────────────────────────────
-const TOTAL_STEPS = 9;
+const TOTAL_STEPS = 7;
 
 // ─── Hackathon picker (shown when user has multiple invitations) ────────────
 function HackathonPickerScreen({
@@ -2210,9 +2185,8 @@ export const Onboarding: React.FC = () => {
                         onNext={goNext}
                       />
                     )}
-                    {step === 1 && <IntroStep onNext={goNext} />}
-                    {step === 2 && <EulaStep name={displayName} invitationId={invitation?.id} onNext={goNext} />}
-                    {step === 3 && (
+                    {step === 1 && <EulaStep name={displayName} invitationId={invitation?.id} onNext={goNext} />}
+                    {step === 2 && (
                       <ConnectGitHubStep
                         name={displayName}
                         githubUsername={githubUsername}
@@ -2223,16 +2197,13 @@ export const Onboarding: React.FC = () => {
                         onNext={goNext}
                       />
                     )}
-                    {step === 4 && (
+                    {step === 3 && (
                       <ThemesStep name={displayName} themes={assignedThemes} onNext={goNext} />
                     )}
-                    {step === 5 && (
+                    {step === 4 && (
                       <CreateAppStep name={displayName} siteSlug={siteSlug} onNext={goNext} />
                     )}
-                    {step === 6 && (
-                      <CreateApiStep name={displayName} onNext={goNext} />
-                    )}
-                    {step === 7 && (
+                    {step === 5 && (
                       <RegisterAppStep
                         name={displayName}
                         invitation={invitation ? { id: invitation.id, site_slug: invitation.site_slug, participant_app_slug: invitation.participant_app_slug, provider_sync_status: invitation.provider_sync_status } : undefined}
@@ -2242,7 +2213,7 @@ export const Onboarding: React.FC = () => {
                         }}
                       />
                     )}
-                    {step === 8 && (
+                    {step === 6 && (
                       <CodespaceStep
                         name={displayName}
                         siteSlug={siteSlug}
@@ -2291,7 +2262,7 @@ export const Onboarding: React.FC = () => {
       </AnimatePresence>
 
       {/* Builder + bubble — outside all glass/motion containers so position:fixed works */}
-      {splashDone && (step === 0 || step === 2) && (
+      {splashDone && (step === 0 || step === 1) && (
         <Box
           sx={{
             position: "fixed",
