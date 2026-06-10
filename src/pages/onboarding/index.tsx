@@ -316,6 +316,8 @@ interface Invitation {
   invite_status?: string;
   participant_app_slug?: string;
   provider_sync_status?: string;
+  nda_signed?: boolean;
+  nda_signed_at?: string;
 }
 
 interface Company {
@@ -645,7 +647,7 @@ function WelcomeStep({
         variant="body1"
         sx={{
           color: "text.secondary",
-          mb: 3,
+          mb: 2,
           fontFamily: "'Open Sans', sans-serif",
           fontSize: { xs: 15, md: 16 },
         }}
@@ -653,10 +655,10 @@ function WelcomeStep({
         Welcome to the TaruviBase Build-a-Thon. Come see what is possible!
       </Typography>
 
-      <Box sx={{ ...glassBlue, borderRadius: "16px", p: 4, mb: 4 }}>
+      <Box sx={{ ...glassBlue, borderRadius: "16px", p: 3, mb: 3 }}>
         <Typography
           variant="body1"
-          sx={{ color: "#020C27", lineHeight: 1.85, fontFamily: "'Open Sans', sans-serif", mb: 2.5 }}
+          sx={{ color: "#020C27", lineHeight: 1.7, fontFamily: "'Open Sans', sans-serif", mb: 1.5 }}
         >
           A Build-a-Thon is a hands-on, fast-paced event where teams move from idea to working
           prototype in just a few hours. No lengthy planning cycles, no formal implementation
@@ -664,7 +666,7 @@ function WelcomeStep({
         </Typography>
         <Typography
           variant="body1"
-          sx={{ color: "#020C27", lineHeight: 1.85, fontFamily: "'Open Sans', sans-serif" }}
+          sx={{ color: "#020C27", lineHeight: 1.7, fontFamily: "'Open Sans', sans-serif" }}
         >
           Today you will explore TaruviBase, experiment with vibe coding, and see how quickly a
           concept can become something real. At the end of the session, your team will present
@@ -688,10 +690,14 @@ function WelcomeStep({
 // ─── Step 2 — EULA ──────────────────────────────────────────────────────────
 function EulaStep({
   invitationId,
+  alreadySigned,
+  signedAt,
   onNext,
 }: {
   name: string;
   invitationId?: string;
+  alreadySigned?: boolean;
+  signedAt?: string;
   onNext: () => void;
 }) {
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -705,6 +711,33 @@ function EulaStep({
     setSaving(false);
     onNext();
   };
+
+  if (alreadySigned) {
+    const signedDate = signedAt
+      ? new Date(signedAt).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })
+      : null;
+    return (
+      <Box sx={{ py: 2, textAlign: "center" }}>
+        <Typography variant="h4" sx={{ fontFamily: "'Quicksand', sans-serif", fontWeight: 700, mb: 1 }}>
+          End User License Agreement
+        </Typography>
+        <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 1.5, my: 3 }}>
+          <CheckCircleRoundedIcon sx={{ fontSize: 52, color: "#2e7d32" }} />
+          <Typography variant="body1" sx={{ fontWeight: 600, color: "#2e7d32" }}>
+            Already signed
+          </Typography>
+          {signedDate && (
+            <Typography variant="body2" color="text.secondary">
+              Agreed on {signedDate}
+            </Typography>
+          )}
+        </Box>
+        <Button variant="contained" size="large" endIcon={<ArrowForwardRoundedIcon />} onClick={onNext} sx={{ px: 4 }}>
+          Continue
+        </Button>
+      </Box>
+    );
+  }
 
   return (
     <Box sx={{ py: 2, textAlign: "center" }}>
@@ -2176,7 +2209,7 @@ export const Onboarding: React.FC = () => {
                     sx={{
                       ...glass,
                       borderRadius: "24px",
-                      p: { xs: 4, md: 6 },
+                      p: { xs: 3, md: 4 },
                     }}
                   >
                     {step === 0 && (
@@ -2185,7 +2218,7 @@ export const Onboarding: React.FC = () => {
                         onNext={goNext}
                       />
                     )}
-                    {step === 1 && <EulaStep name={displayName} invitationId={invitation?.id} onNext={goNext} />}
+                    {step === 1 && <EulaStep name={displayName} invitationId={invitation?.id} alreadySigned={!!invitation?.nda_signed} signedAt={invitation?.nda_signed_at} onNext={goNext} />}
                     {step === 2 && (
                       <ConnectGitHubStep
                         name={displayName}
