@@ -1952,7 +1952,7 @@ export const Onboarding: React.FC = () => {
   // provider key) right when the codespace becomes Available, before the 2-min warm-up ends.
   useEffect(() => {
     if (!githubToken || !registeredAppSlug || codespaceStarted.current) return;
-    const siteUrl = siteSlug ? `https://${siteSlug}.taruvi.cloud` : "";
+    const siteUrl = invitation?.site_slug ? `https://${invitation.site_slug}.taruvi.cloud` : "";
     codespaceStarted.current = true;
     setCodespaceStatus("creating");
 
@@ -1980,7 +1980,7 @@ export const Onboarding: React.FC = () => {
           setCodespaceError(msg || "creation_failed");
         }
       });
-  }, [githubToken, registeredAppSlug, siteSlug]);
+  }, [githubToken, registeredAppSlug]);
 
   // Polling — runs every 5s until Available or timeout (5 min)
   useEffect(() => {
