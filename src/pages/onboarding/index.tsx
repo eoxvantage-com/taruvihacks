@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from "react";
+import { createPortal } from "react-dom";
 import {
   Box,
   Typography,
@@ -586,38 +587,83 @@ function Label({ children }: { children: React.ReactNode }) {
 }
 
 // ─── Helper message bubble ──────────────────────────────────────────────────
-// Animated character will be added here later — for now just the speech bubble.
+// Portalled to document.body so position:fixed is never inside a CSS-transform
+// context (Framer Motion), which would cause it to snap/move on animation.
 function HelperMessage({ children }: { children: React.ReactNode }) {
-  return (
+  return createPortal(
     <Box
       sx={{
-        background: BLUE_LIGHT,
-        border: `1px solid ${BLUE_BORDER}`,
-        borderRadius: "16px",
-        px: 3,
-        py: 2,
-        mb: 3.5,
+        position: "fixed",
+        bottom: 0,
+        left: 0,
+        zIndex: 10,
+        pointerEvents: "none",
+        display: "flex",
+        flexDirection: "row",
+        alignItems: "flex-end",
+        gap: 0,
       }}
     >
-      <Typography
-        variant="caption"
+      {/* Builder character */}
+      <Box
+        component="img"
+        src={BUILDER_URL}
+        alt="Taru"
         sx={{
-          fontFamily: "'Quicksand', sans-serif",
-          fontWeight: 700,
-          color: BLUE,
-          fontSize: 10,
-          textTransform: "uppercase",
-          letterSpacing: "0.08em",
-          display: "block",
-          mb: 0.75,
+          width: { xs: 90, md: 130 },
+          height: "auto",
+          flexShrink: 0,
         }}
-      >
-        Taru
-      </Typography>
-      <Typography variant="body2" sx={{ color: "#020C27", lineHeight: 1.7 }}>
-        {children}
-      </Typography>
-    </Box>
+      />
+
+      {/* Speech bubble with tail pointing left toward the builder */}
+      <Box sx={{ position: "relative", mb: "72px", width: "max-content", maxWidth: { xs: 420, md: 680 } }}>
+        {/* Tail */}
+        <Box
+          sx={{
+            position: "absolute",
+            left: -8,
+            bottom: 16,
+            width: 14,
+            height: 14,
+            background: "#FFFFFF",
+            borderTop: `1px solid ${BLUE_BORDER}`,
+            borderLeft: `1px solid ${BLUE_BORDER}`,
+            transform: "rotate(45deg)",
+          }}
+        />
+        <Box
+          sx={{
+            background: "#FFFFFF",
+            border: `1px solid ${BLUE_BORDER}`,
+            borderRadius: "12px",
+            px: 2,
+            py: 1.5,
+            boxShadow: "0 4px 16px rgba(30,80,160,0.10)",
+          }}
+        >
+          <Typography
+            variant="caption"
+            sx={{
+              fontFamily: "'Quicksand', sans-serif",
+              fontWeight: 700,
+              color: BLUE,
+              fontSize: 11,
+              textTransform: "uppercase",
+              letterSpacing: "0.08em",
+              display: "block",
+              mb: 0.5,
+            }}
+          >
+            Taru
+          </Typography>
+          <Typography variant="body2" sx={{ color: "#020C27", lineHeight: 1.6, fontSize: 14 }}>
+            {children}
+          </Typography>
+        </Box>
+      </Box>
+    </Box>,
+    document.body
   );
 }
 
@@ -977,9 +1023,6 @@ function CreateAppStep({
         Creating Your Application
       </Typography>
 
-      <HelperMessage>
-        Your Taruvi site is live and ready, {name}. The first step is to create an application on your site console — this will serve as the container for all the data models and APIs you build during the Build-a-thon. Follow the screenshots below in sequence to complete the setup.
-      </HelperMessage>
 
       {/* Site console link */}
       {siteUrl && (
