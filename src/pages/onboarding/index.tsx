@@ -1947,13 +1947,16 @@ export const Onboarding: React.FC = () => {
       });
   }, [codespaceName, registeredAppSlug]);
 
-  // Background codespace creation — fires once when GitHub token is available
+  // Background codespace creation — fires once both GitHub token and app slug are available.
+  // Waiting for registeredAppSlug means the backend can inject codespace_configs (with the
+  // provider key) right when the codespace becomes Available, before the 2-min warm-up ends.
   useEffect(() => {
-    if (!githubToken || codespaceStarted.current) return;
+    if (!githubToken || !registeredAppSlug || codespaceStarted.current) return;
+    const siteUrl = siteSlug ? `https://${siteSlug}.taruvi.cloud` : "";
     codespaceStarted.current = true;
     setCodespaceStatus("creating");
 
-    createCodespace({ githubToken, displayName })
+    createCodespace({ githubToken, displayName, taruvi_site_url: siteUrl, taruvi_app_slug: registeredAppSlug })
       .then((result) => {
         setCodespaceName(result.codespace_name);
         setCodespaceWebUrl(result.web_url);
@@ -1977,7 +1980,7 @@ export const Onboarding: React.FC = () => {
           setCodespaceError(msg || "creation_failed");
         }
       });
-  }, [githubToken]);
+  }, [githubToken, registeredAppSlug, siteSlug]);
 
   // Polling — runs every 5s until Available or timeout (5 min)
   useEffect(() => {

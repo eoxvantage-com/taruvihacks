@@ -170,10 +170,14 @@ export async function githubOAuthExchange(params: {
 export async function createCodespace(params: {
   githubToken: string;
   displayName: string;
+  taruvi_site_url?: string;
+  taruvi_app_slug?: string;
 }): Promise<{ codespace_name: string; web_url: string; state: string }> {
   const result = await callFunction("github-create-codespace", {
     github_token: params.githubToken,
     display_name: params.displayName,
+    taruvi_site_url: params.taruvi_site_url ?? "",
+    taruvi_app_slug: params.taruvi_app_slug ?? "",
   });
   return {
     codespace_name: result.codespace_name as string,
