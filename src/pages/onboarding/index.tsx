@@ -1416,6 +1416,49 @@ const CODESPACE_FEATURES = [
   "Instant cloud IDE",
 ];
 
+const LOADING_FACTS = [
+  {
+    emoji: "🧠",
+    title: "GPT-4 has ~1.8 trillion parameters",
+    body: "That's roughly 10x the estimated number of synapses in a human brain",
+  },
+  {
+    emoji: "⚡",
+    title: "AI agents can run 24/7",
+    body: "No coffee breaks, no Mondays. One agent can handle thousands of tasks simultaneously",
+  },
+  {
+    emoji: "💬",
+    title: '"Prompt" is now a job title',
+    body: '"Prompt Engineer" salaries now reach $300K+ at top AI companies',
+  },
+  {
+    emoji: "🤖",
+    title: "The first AI agent completed a coding task in 2023",
+    body: "AutoGPT could browse the web, write code, and execute it — all on its own. No human in the loop",
+  },
+  {
+    emoji: "📈",
+    title: "100M users in 2 months",
+    body: "ChatGPT became the fastest-growing app in history. It took Netflix 3.5 years to reach the same milestone",
+  },
+  {
+    emoji: "👨‍💻",
+    title: "Vibe coding was coined by Andrej Karpathy",
+    body: 'He posted on X on Feb 2, 2025: "fully give in to the vibes, embrace exponentials, and forget that the code even exists"',
+  },
+  {
+    emoji: "🎯",
+    title: "Your job shifts from typing syntax to describing intent",
+    body: 'Karpathy called English "the hottest new programming language" back in 2023 — two years before it became reality',
+  },
+  {
+    emoji: "🐛",
+    title: 'He fixes bugs by "asking for random changes until it goes away"',
+    body: "— and it works",
+  },
+];
+
 function CodespaceStep({
   name,
   siteSlug,
@@ -1438,6 +1481,12 @@ function CodespaceStep({
   const siteUrl = siteSlug ? `https://${siteSlug}.taruvi.cloud` : "";
 
   const noGitHub = !githubUsername;
+
+  const [factIdx, setFactIdx] = useState(0);
+  useEffect(() => {
+    const t = setInterval(() => setFactIdx((i) => (i + 1) % LOADING_FACTS.length), 7000);
+    return () => clearInterval(t);
+  }, []);
   const isReady =
     codespaceStatus === "ready" &&
     (secretsStatus === "done" || secretsStatus === "failed");
@@ -1582,6 +1631,93 @@ function CodespaceStep({
               Open GitHub Codespaces directly →
             </a>
           </Typography>
+        </Box>
+      )}
+
+      {/* Fun facts — visible while codespace is loading */}
+      {isWorking && (
+        <Box sx={{ mt: 2, mb: 1 }}>
+          <Typography
+            variant="caption"
+            sx={{
+              display: "block",
+              textAlign: "center",
+              fontFamily: "'Quicksand', sans-serif",
+              fontWeight: 700,
+              color: BLUE,
+              letterSpacing: "0.08em",
+              textTransform: "uppercase",
+              mb: 1.5,
+              opacity: 0.6,
+            }}
+          >
+            ⏳ While you wait…
+          </Typography>
+          <Box
+            sx={{
+              bgcolor: BLUE_LIGHT,
+              border: `1px solid ${BLUE_BORDER}`,
+              borderRadius: "16px",
+              px: 3,
+              py: 2.5,
+              minHeight: 110,
+              overflow: "hidden",
+              position: "relative",
+            }}
+          >
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={factIdx}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                transition={{ duration: 0.3 }}
+              >
+                <Stack direction="row" spacing={2} alignItems="flex-start">
+                  <Typography sx={{ fontSize: 30, lineHeight: 1, mt: 0.25, flexShrink: 0 }}>
+                    {LOADING_FACTS[factIdx].emoji}
+                  </Typography>
+                  <Box>
+                    <Typography
+                      sx={{
+                        fontFamily: "'Quicksand', sans-serif",
+                        fontWeight: 700,
+                        fontSize: 14,
+                        color: "#1E3A8A",
+                        mb: 0.5,
+                      }}
+                    >
+                      {LOADING_FACTS[factIdx].title}
+                    </Typography>
+                    <Typography
+                      variant="body2"
+                      sx={{ fontFamily: "'Quicksand', sans-serif", color: "text.secondary", fontSize: 13 }}
+                    >
+                      {LOADING_FACTS[factIdx].body}
+                    </Typography>
+                  </Box>
+                </Stack>
+              </motion.div>
+            </AnimatePresence>
+          </Box>
+          {/* Dot navigation */}
+          <Stack direction="row" justifyContent="center" spacing={0.75} sx={{ mt: 1.5 }}>
+            {LOADING_FACTS.map((_, i) => (
+              <Box
+                key={i}
+                onClick={() => setFactIdx(i)}
+                sx={{
+                  width: i === factIdx ? 20 : 8,
+                  height: 8,
+                  borderRadius: "4px",
+                  bgcolor: i === factIdx ? BLUE : BLUE_BORDER,
+                  cursor: "pointer",
+                  transition: "all 0.3s",
+                  opacity: i === factIdx ? 1 : 0.5,
+                }}
+              />
+            ))}
+          </Stack>
         </Box>
       )}
 
