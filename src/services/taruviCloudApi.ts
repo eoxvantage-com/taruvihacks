@@ -102,6 +102,10 @@ export async function sendSurveyEmails(companyId: string): Promise<Record<string
   return callFunction("send-hackathon-survey-emails", { company_id: companyId });
 }
 
+export async function sendCertificateEmails(companyId: string): Promise<Record<string, unknown>> {
+  return callFunction("send-hackathon-certificates", { company_id: companyId });
+}
+
 export async function storeProviderKey(params: {
   companyId: string;
   providerType: string;

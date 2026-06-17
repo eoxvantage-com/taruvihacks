@@ -53,10 +53,12 @@ import KeyRoundedIcon from "@mui/icons-material/KeyRounded";
 import SpeedRoundedIcon from "@mui/icons-material/SpeedRounded";
 import EditRoundedIcon from "@mui/icons-material/EditRounded";
 import EventRoundedIcon from "@mui/icons-material/EventRounded";
+import WarningAmberRoundedIcon from "@mui/icons-material/WarningAmberRounded";
 import LinkRoundedIcon from "@mui/icons-material/LinkRounded";
 import SendRoundedIcon from "@mui/icons-material/SendRounded";
 import MarkEmailReadRoundedIcon from "@mui/icons-material/MarkEmailReadRounded";
-import { inviteUserToSite, listTaruviInvitations, sendSurveyEmails, storeProviderKey } from "../../services/taruviCloudApi";
+import WorkspacePremiumRoundedIcon from "@mui/icons-material/WorkspacePremiumRounded";
+import { inviteUserToSite, listTaruviInvitations, sendSurveyEmails, sendCertificateEmails, storeProviderKey } from "../../services/taruviCloudApi";
 
 interface Company {
   id: string;
@@ -71,6 +73,7 @@ interface Company {
   buildathon_end?: string;
   survey_link?: string;
   survey_sent?: boolean;
+  certificates_sent?: boolean;
   created_at?: string;
 }
 
@@ -78,6 +81,7 @@ interface Invitation {
   id: string;
   company_id: string;
   email: string;
+  participant_name?: string;
   site_slug: string;
   invite_status?: string;
   invited_at?: string;
@@ -114,6 +118,9 @@ const PROVIDER_OPTIONS = [
   { value: "claude", label: "Claude (Anthropic)" },
   { value: "codex", label: "Codex (OpenAI)" },
 ];
+
+// OpenAI auth tokens expire every 8 days; warn admin on day 7 (≤1 day left).
+const OPENAI_TOKEN_EXPIRY_DAYS = 8;
 
 function StatusChip({ status }: { status?: string }) {
   const s = (status ?? "pending").toLowerCase();
@@ -361,6 +368,21 @@ export const CompanyShow: React.FC = () => {
     );
   };
 
+  // ── Release certificates ─────────────────────────────────────────────────
+  const [certSending, setCertSending] = useState(false);
+
+  const handleSendCertificates = () => {
+    if (!companyId) return;
+    setCertSending(true);
+    updateCompany(
+      { resource: "companies", id: companyId, values: { certificates_sent: true } },
+      {
+        onSuccess: () => { setCertSending(false); notify?.({ message: "Certificates released — participants can now download them.", type: "success" }); },
+        onError: () => { setCertSending(false); notify?.({ message: "Failed to release certificates.", type: "error" }); },
+      }
+    );
+  };
+
   // ── Send survey emails ───────────────────────────────────────────────────
   const [surveySending, setSurveySending] = useState(false);
 
@@ -384,6 +406,7 @@ export const CompanyShow: React.FC = () => {
 
   const [inviteOpen, setInviteOpen] = useState(false);
   const [inviteEmail, setInviteEmail] = useState("");
+  const [inviteName, setInviteName] = useState("");
   const [inviteSubmitting, setInviteSubmitting] = useState(false);
   const [inviteError, setInviteError] = useState<string | null>(null);
 
@@ -401,6 +424,7 @@ export const CompanyShow: React.FC = () => {
     if (inviteSubmitting) return;
     setInviteOpen(false);
     setInviteEmail("");
+    setInviteName("");
     setInviteError(null);
   };
 
@@ -418,7 +442,7 @@ export const CompanyShow: React.FC = () => {
     createInvitation(
       {
         resource: "invitations",
-        values: { company_id: companyId, email: inviteEmail.trim().toLowerCase(), site_slug: company.site_slug ?? "", invite_status: "pending", invited_at: new Date().toISOString() },
+        values: { company_id: companyId, email: inviteEmail.trim().toLowerCase(), participant_name: inviteName.trim() || null, site_slug: company.site_slug ?? "", invite_status: "pending", invited_at: new Date().toISOString() },
       },
       {
         onSuccess: () => { setInviteSubmitting(false); handleInviteClose(); notify?.({ message: `Invitation sent to ${inviteEmail}`, type: "success" }); },
@@ -541,125 +565,144 @@ export const CompanyShow: React.FC = () => {
 
       {/* Company info card */}
       <Card sx={{ mb: 3 }}>
-        <CardContent>
-          <Stack direction={{ xs: "column", md: "row" }} spacing={3} alignItems={{ md: "flex-start" }}>
-            <Box sx={{ width: 56, height: 56, borderRadius: 2, bgcolor: "primary.50", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-              <BusinessRoundedIcon sx={{ fontSize: 28, color: "primary.main" }} />
-            </Box>
-            <Box sx={{ flex: 1, minWidth: 0 }}>
-              <Stack direction="row" alignItems="center" spacing={1.5} flexWrap="wrap">
-                <Typography variant="h4">{company?.name}</Typography>
-                <Chip label={company?.site_created ? "Active" : "Pending"} color={company?.site_created ? "info" : "warning"} size="small" />
-                <Chip label={company?.site_environment ?? "production"} color={company?.site_environment === "staging" ? "warning" : "success"} size="small" />
-              </Stack>
-              {company?.description && (
-                <Typography variant="body2" color="text.secondary" sx={{ mt: 0.75 }}>{company.description}</Typography>
-              )}
-              <Stack direction="row" spacing={3} sx={{ mt: 2 }} flexWrap="wrap">
-                <Box>
-                  <Typography variant="caption" color="text.disabled" display="block">Site Slug</Typography>
-                  <Typography variant="body2" sx={{ fontFamily: "monospace", fontWeight: 600 }}>{company?.site_slug ?? "—"}</Typography>
-                </Box>
-                <Box>
-                  <Typography variant="caption" color="text.disabled" display="block">Organization</Typography>
-                  <Typography variant="body2" fontWeight={600}>{company?.org_slug} (ID {company?.org_id})</Typography>
-                </Box>
-                {company?.created_at && (
-                  <Box>
-                    <Typography variant="caption" color="text.disabled" display="block">Created</Typography>
-                    <Typography variant="body2">{new Date(company.created_at).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}</Typography>
-                  </Box>
-                )}
-              </Stack>
+        <CardContent sx={{ p: { xs: 2.5, md: 3 } }}>
+          <Stack direction={{ xs: "column", md: "row" }} spacing={0} alignItems="stretch">
 
-              {/* Build-a-thon dates */}
-              <Stack direction="row" spacing={0.75} alignItems="center" sx={{ mt: 2 }}>
-                <Box sx={{ px: 1.5, py: 0.75, border: 1, borderColor: "divider", borderRadius: 1.5, bgcolor: "grey.50", display: "flex", alignItems: "center", gap: 2 }}>
-                  <EventRoundedIcon sx={{ fontSize: 16, color: "text.disabled", flexShrink: 0 }} />
+            {/* ── Left: identity ──────────────────────────────────────── */}
+            <Stack direction="row" spacing={2.5} alignItems="flex-start" sx={{ flex: 1, minWidth: 0, pr: { md: 4 } }}>
+              <Box sx={{ width: 52, height: 52, borderRadius: 2, bgcolor: "primary.50", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, mt: 0.25 }}>
+                <BusinessRoundedIcon sx={{ fontSize: 26, color: "primary.main" }} />
+              </Box>
+              <Box sx={{ minWidth: 0 }}>
+                <Stack direction="row" alignItems="center" spacing={1.5} flexWrap="wrap">
+                  <Typography variant="h5" fontWeight={700}>{company?.name}</Typography>
+                  <Chip label={company?.site_created ? "Active" : "Pending"} color={company?.site_created ? "info" : "warning"} size="small" />
+                  <Chip label={company?.site_environment ?? "production"} color={company?.site_environment === "staging" ? "warning" : "success"} size="small" />
+                </Stack>
+                {company?.description && (
+                  <Typography variant="body2" color="text.secondary" sx={{ mt: 0.75 }}>{company.description}</Typography>
+                )}
+                <Stack direction="row" spacing={4} sx={{ mt: 2 }} flexWrap="wrap">
                   <Box>
-                    <Typography variant="caption" color="text.disabled" display="block">Start</Typography>
+                    <Typography variant="caption" color="text.disabled" display="block">Site Slug</Typography>
+                    <Typography variant="body2" sx={{ fontFamily: "monospace", fontWeight: 600 }}>{company?.site_slug ?? "—"}</Typography>
+                  </Box>
+                  <Box>
+                    <Typography variant="caption" color="text.disabled" display="block">Organization</Typography>
+                    <Typography variant="body2" fontWeight={600}>{company?.org_slug} (ID {company?.org_id})</Typography>
+                  </Box>
+                  {company?.created_at && (
+                    <Box>
+                      <Typography variant="caption" color="text.disabled" display="block">Created</Typography>
+                      <Typography variant="body2">{new Date(company.created_at).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}</Typography>
+                    </Box>
+                  )}
+                </Stack>
+              </Box>
+            </Stack>
+
+            {/* ── Divider ─────────────────────────────────────────────── */}
+            <Box sx={{ display: { xs: "none", md: "block" }, width: "1px", bgcolor: "divider", mx: 0, alignSelf: "stretch" }} />
+
+            {/* ── Right: event controls ───────────────────────────────── */}
+            <Box sx={{ width: { xs: "100%", md: 300 }, pl: { md: 4 }, pt: { xs: 3, md: 0 }, display: "flex", flexDirection: "column", justifyContent: "space-between", gap: 2 }}>
+
+              {/* Dates */}
+              <Stack direction="row" justifyContent="space-between" alignItems="flex-start">
+                <Box>
+                  <Typography variant="caption" color="text.disabled" display="block" sx={{ mb: 0.25 }}>Build-a-thon dates</Typography>
+                  <Stack direction="row" spacing={1} alignItems="center">
                     <Typography variant="body2" fontWeight={600}>
                       {company?.buildathon_start
-                        ? new Date(company.buildathon_start).toLocaleString("en-US", { month: "short", day: "numeric", year: "numeric", hour: "2-digit", minute: "2-digit" })
-                        : <Typography component="span" variant="body2" color="text.disabled">Not set</Typography>}
+                        ? new Date(company.buildathon_start).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
+                        : <Typography component="span" variant="body2" color="text.disabled">Start not set</Typography>}
                     </Typography>
-                  </Box>
-                  <Typography color="text.disabled">→</Typography>
-                  <Box>
-                    <Typography variant="caption" color="text.disabled" display="block">End</Typography>
+                    <Typography variant="body2" color="text.disabled">→</Typography>
                     <Typography variant="body2" fontWeight={600}>
                       {company?.buildathon_end
-                        ? new Date(company.buildathon_end).toLocaleString("en-US", { month: "short", day: "numeric", year: "numeric", hour: "2-digit", minute: "2-digit" })
-                        : <Typography component="span" variant="body2" color="text.disabled">Not set</Typography>}
+                        ? new Date(company.buildathon_end).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
+                        : <Typography component="span" variant="body2" color="text.disabled">End not set</Typography>}
                     </Typography>
-                  </Box>
+                  </Stack>
                 </Box>
                 <Tooltip title="Edit build-a-thon dates">
-                  <IconButton size="small" onClick={handleDatesOpen}>
-                    <EditRoundedIcon sx={{ fontSize: 16 }} />
+                  <IconButton size="small" onClick={handleDatesOpen} sx={{ mt: -0.5 }}>
+                    <EditRoundedIcon sx={{ fontSize: 15 }} />
                   </IconButton>
                 </Tooltip>
               </Stack>
 
-              {/* Survey link */}
-              <Stack direction="row" spacing={0.75} alignItems="center" sx={{ mt: 1.5 }}>
-                <Box sx={{ px: 1.5, py: 0.75, border: 1, borderColor: "divider", borderRadius: 1.5, bgcolor: "grey.50", display: "flex", alignItems: "center", gap: 1.5, minWidth: 0 }}>
-                  <LinkRoundedIcon sx={{ fontSize: 16, color: "text.disabled", flexShrink: 0 }} />
-                  <Box sx={{ minWidth: 0 }}>
-                    <Typography variant="caption" color="text.disabled" display="block">Survey</Typography>
-                    {company?.survey_link ? (
-                      <Typography
-                        component="a"
-                        href={company.survey_link}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        variant="body2"
-                        fontWeight={600}
-                        sx={{ color: "primary.main", textDecoration: "none", "&:hover": { textDecoration: "underline" }, display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 320 }}
-                      >
-                        {company.survey_link}
-                      </Typography>
-                    ) : (
-                      <Typography variant="body2" color="text.disabled">Not set</Typography>
-                    )}
-                  </Box>
+              {/* Survey */}
+              <Stack direction="row" justifyContent="space-between" alignItems="flex-start">
+                <Box sx={{ minWidth: 0, flex: 1, mr: 1 }}>
+                  <Typography variant="caption" color="text.disabled" display="block" sx={{ mb: 0.25 }}>Survey</Typography>
+                  {company?.survey_link ? (
+                    <Typography
+                      component="a"
+                      href={company.survey_link}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      variant="body2"
+                      fontWeight={600}
+                      sx={{ color: "primary.main", textDecoration: "none", "&:hover": { textDecoration: "underline" }, display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
+                    >
+                      {company.survey_link}
+                    </Typography>
+                  ) : (
+                    <Typography variant="body2" color="text.disabled">Not set</Typography>
+                  )}
                 </Box>
-                <Tooltip title="Edit survey link">
-                  <IconButton size="small" onClick={handleSurveyOpen}>
-                    <EditRoundedIcon sx={{ fontSize: 16 }} />
-                  </IconButton>
-                </Tooltip>
-                {company?.survey_sent ? (
-                  <Chip
-                    icon={<MarkEmailReadRoundedIcon sx={{ fontSize: 14 }} />}
-                    label="Sent"
-                    color="success"
-                    size="small"
-                    sx={{ fontWeight: 600 }}
-                  />
+                <Stack direction="row" spacing={0.5} alignItems="center" sx={{ flexShrink: 0 }}>
+                  <Tooltip title="Edit survey link">
+                    <IconButton size="small" onClick={handleSurveyOpen} sx={{ mt: -0.5 }}>
+                      <EditRoundedIcon sx={{ fontSize: 15 }} />
+                    </IconButton>
+                  </Tooltip>
+                  {company?.survey_sent ? (
+                    <Chip icon={<MarkEmailReadRoundedIcon sx={{ fontSize: 13 }} />} label="Sent" color="success" size="small" sx={{ fontWeight: 600 }} />
+                  ) : (
+                    <Tooltip title={!company?.survey_link ? "Add a survey link first" : "Send survey email to all invitees"}>
+                      <span>
+                        <Button size="small" variant="outlined" startIcon={surveySending ? <CircularProgress size={12} color="inherit" /> : <SendRoundedIcon sx={{ fontSize: 13 }} />} disabled={!company?.survey_link || surveySending} onClick={handleSendSurvey} sx={{ height: 28, fontSize: 11 }}>
+                          {surveySending ? "Sending…" : "Send"}
+                        </Button>
+                      </span>
+                    </Tooltip>
+                  )}
+                </Stack>
+              </Stack>
+
+              {/* Certificates */}
+              <Stack direction="row" justifyContent="space-between" alignItems="flex-start">
+                <Box>
+                  <Typography variant="caption" color="text.disabled" display="block" sx={{ mb: 0.25 }}>Certificates</Typography>
+                  <Typography variant="body2" color={company?.certificates_sent ? "success.main" : "text.secondary"} fontWeight={company?.certificates_sent ? 600 : 400}>
+                    {company?.certificates_sent ? "Released to participants" : "Not yet released"}
+                  </Typography>
+                </Box>
+                {company?.certificates_sent ? (
+                  <Chip icon={<MarkEmailReadRoundedIcon sx={{ fontSize: 13 }} />} label="Released" color="success" size="small" sx={{ fontWeight: 600, flexShrink: 0 }} />
                 ) : (
-                  <Tooltip title={!company?.survey_link ? "Add a survey link first" : "Send survey email to all invitees"}>
+                  <Tooltip title="Release certificates so participants can download them from their portal">
                     <span>
-                      <Button
-                        size="small"
-                        variant="outlined"
-                        startIcon={surveySending ? <CircularProgress size={13} color="inherit" /> : <SendRoundedIcon sx={{ fontSize: 14 }} />}
-                        disabled={!company?.survey_link || surveySending}
-                        onClick={handleSendSurvey}
-                        sx={{ height: 30, fontSize: 12 }}
-                      >
-                        {surveySending ? "Sending…" : "Send Survey"}
+                      <Button size="small" variant="outlined" startIcon={certSending ? <CircularProgress size={12} color="inherit" /> : <WorkspacePremiumRoundedIcon sx={{ fontSize: 13 }} />} disabled={certSending} onClick={handleSendCertificates} sx={{ height: 28, fontSize: 11, flexShrink: 0 }}>
+                        {certSending ? "Releasing…" : "Release"}
                       </Button>
                     </span>
                   </Tooltip>
                 )}
               </Stack>
+
+              {/* Open Site */}
+              {company?.site_slug && (
+                <Box>
+                  <Button variant="outlined" size="small" endIcon={<OpenInNewRoundedIcon sx={{ fontSize: 13 }} />} href={`https://${company.site_slug}.taruvi.cloud`} target="_blank" rel="noopener noreferrer" sx={{ fontSize: 12 }}>
+                    Open Site
+                  </Button>
+                </Box>
+              )}
+
             </Box>
-            {company?.site_slug && (
-              <Button variant="outlined" size="small" endIcon={<OpenInNewRoundedIcon sx={{ fontSize: 14 }} />} href={`https://${company.site_slug}.taruvi.cloud`} target="_blank" rel="noopener noreferrer" sx={{ flexShrink: 0 }}>
-                Open Site
-              </Button>
-            )}
           </Stack>
         </CardContent>
       </Card>
@@ -911,13 +954,35 @@ export const CompanyShow: React.FC = () => {
               const label = PROVIDER_OPTIONS.find((o) => o.value === p.provider_type)?.label ?? p.provider_type;
               const pct = p.capacity_total > 0 ? Math.round((p.capacity_remaining / p.capacity_total) * 100) : 0;
               const low = pct <= 20;
+
+              // OpenAI tokens expire every 8 days — warn on day 7 (≤1 day left)
+              let tokenExpiryWarning: string | null = null;
+              if (p.provider_type === "codex" && p.created_at) {
+                const expiresAt = new Date(p.created_at).getTime() + OPENAI_TOKEN_EXPIRY_DAYS * 24 * 60 * 60 * 1000;
+                const daysLeft = Math.floor((expiresAt - Date.now()) / (24 * 60 * 60 * 1000));
+                if (daysLeft <= 0) tokenExpiryWarning = "Token expired — replace immediately";
+                else if (daysLeft === 1) tokenExpiryWarning = "Token expires tomorrow — replace now";
+              }
+
               return (
-                <Paper key={p.id} variant="outlined" sx={{ p: 2.5, borderRadius: 2 }}>
+                <Paper
+                  key={p.id}
+                  variant="outlined"
+                  sx={{ p: 2.5, borderRadius: 2, ...(tokenExpiryWarning ? { borderColor: "warning.main" } : {}) }}
+                >
                   <Stack direction={{ xs: "column", sm: "row" }} spacing={2} alignItems={{ sm: "flex-start" }}>
                     <Box sx={{ flex: 1 }}>
                       <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1 }}>
                         <Chip label={label} size="small" color="primary" sx={{ fontWeight: 700 }} />
                         {low && <Chip label="Low capacity" size="small" color="error" />}
+                        {tokenExpiryWarning && (
+                          <Chip
+                            icon={<WarningAmberRoundedIcon sx={{ fontSize: "14px !important" }} />}
+                            label={tokenExpiryWarning}
+                            size="small"
+                            color="warning"
+                          />
+                        )}
                       </Stack>
 
                       {/* Auth key — last 4 chars only; raw key never leaves server */}
@@ -972,7 +1037,13 @@ export const CompanyShow: React.FC = () => {
           <Stack spacing={2} sx={{ mt: 0.5 }}>
             {inviteError && <Alert severity="error">{inviteError}</Alert>}
             <TextField
-              label="Email Address" type="email" required fullWidth autoFocus
+              label="Full Name" required fullWidth autoFocus
+              value={inviteName} onChange={(e) => setInviteName(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter") handleInviteSubmit(); }}
+              helperText="Used on the participant's completion certificate"
+            />
+            <TextField
+              label="Email Address" type="email" required fullWidth
               value={inviteEmail} onChange={(e) => setInviteEmail(e.target.value)}
               onKeyDown={(e) => { if (e.key === "Enter") handleInviteSubmit(); }}
               helperText={`Will be added to site: ${company?.site_slug ?? "—"} as Member`}
@@ -981,7 +1052,7 @@ export const CompanyShow: React.FC = () => {
         </DialogContent>
         <DialogActions>
           <Button variant="outlined" onClick={handleInviteClose} disabled={inviteSubmitting}>Cancel</Button>
-          <Button variant="contained" onClick={handleInviteSubmit} disabled={!inviteEmail.trim() || inviteSubmitting} startIcon={inviteSubmitting ? <CircularProgress size={14} color="inherit" /> : <AddRoundedIcon />}>
+          <Button variant="contained" onClick={handleInviteSubmit} disabled={!inviteEmail.trim() || !inviteName.trim() || inviteSubmitting} startIcon={inviteSubmitting ? <CircularProgress size={14} color="inherit" /> : <AddRoundedIcon />}>
             {inviteSubmitting ? "Sending…" : "Send Invite"}
           </Button>
         </DialogActions>

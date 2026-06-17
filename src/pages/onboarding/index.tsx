@@ -33,6 +33,8 @@ import ExpandMoreRoundedIcon from "@mui/icons-material/ExpandMoreRounded";
 import ContentCopyRoundedIcon from "@mui/icons-material/ContentCopyRounded";
 import GitHubIcon from "@mui/icons-material/GitHub";
 import DescriptionRoundedIcon from "@mui/icons-material/DescriptionRounded";
+import WorkspacePremiumRoundedIcon from "@mui/icons-material/WorkspacePremiumRounded";
+import LinkedInIcon from "@mui/icons-material/LinkedIn";
 import {
   syncParticipantProviderSecret,
   acceptEula,
@@ -57,6 +59,7 @@ const CODESPACE_URL =
 
 const STORAGE_BASE =
   "https://hackathonsite.taruvi.cloud/api/apps/hackathonapp/storage/buckets/storage/objects";
+const CERT_TEMPLATE_URL = `${STORAGE_BASE}/EOX-Certificate-Template.png`;
 const APP_SCREENSHOTS = [
   { src: `${STORAGE_BASE}/App-1.png`, alt: "Click on your site" },
   { src: `${STORAGE_BASE}/App-2.png`, alt: "Click on Create New App" },
@@ -313,6 +316,7 @@ interface Invitation {
   id: string;
   company_id: string;
   email: string;
+  participant_name?: string;
   site_slug: string;
   invite_status?: string;
   participant_app_slug?: string;
@@ -325,6 +329,8 @@ interface Company {
   id: string;
   name: string;
   site_slug?: string;
+  buildathon_end?: string;
+  certificates_sent?: boolean;
 }
 
 interface Theme {
@@ -594,7 +600,7 @@ function HelperMessage({ children }: { children: React.ReactNode }) {
     <Box
       sx={{
         position: "fixed",
-        bottom: 0,
+        bottom: 24,
         left: 0,
         zIndex: 10,
         pointerEvents: "none",
@@ -617,7 +623,7 @@ function HelperMessage({ children }: { children: React.ReactNode }) {
       />
 
       {/* Speech bubble with tail pointing left toward the builder */}
-      <Box sx={{ position: "relative", mb: "72px", width: "max-content", maxWidth: { xs: 420, md: 680 } }}>
+      <Box sx={{ position: "relative", mb: "40px", width: "max-content", maxWidth: { xs: 420, md: 680 } }}>
         {/* Tail */}
         <Box
           sx={{
@@ -1511,6 +1517,7 @@ function CodespaceStep({
   codespaceStatus,
   codespaceError,
   secretsStatus,
+  onNext,
 }: {
   name: string;
   siteSlug?: string;
@@ -1520,6 +1527,7 @@ function CodespaceStep({
   codespaceStatus: CodespaceStatus;
   codespaceError?: string;
   secretsStatus: SecretsStatus;
+  onNext: () => void;
 }) {
   const siteUrl = siteSlug ? `https://${siteSlug}.taruvi.cloud` : "";
 
@@ -1765,7 +1773,7 @@ function CodespaceStep({
       )}
 
       {siteSlug && (
-        <Box sx={{ mt: 1 }}>
+        <Box sx={{ mt: 1, mb: 3 }}>
           <Typography variant="caption" color="text.disabled">
             Your site console:{" "}
             <a href={`https://${siteSlug}.taruvi.cloud`} target="_blank" rel="noopener noreferrer" style={{ color: BLUE }}>
@@ -1774,6 +1782,16 @@ function CodespaceStep({
           </Typography>
         </Box>
       )}
+
+      <Button
+        variant="contained"
+        size="large"
+        endIcon={<ArrowForwardRoundedIcon />}
+        onClick={onNext}
+        sx={{ px: 4 }}
+      >
+        Continue
+      </Button>
     </Box>
   );
 }
@@ -1942,8 +1960,222 @@ function ConnectGitHubStep({
   );
 }
 
+// ─── Step 7 — Certificate ───────────────────────────────────────────────────
+function CertificateStep({
+  participantName,
+  companyName,
+  buildathonEnd,
+  certificatesReleased,
+}: {
+  participantName: string;
+  companyName: string;
+  buildathonEnd?: string;
+  certificatesReleased: boolean;
+}) {
+  // Load script font for the name overlay
+  useEffect(() => {
+    const id = "cert-great-vibes";
+    if (document.getElementById(id)) return;
+    const link = document.createElement("link");
+    link.id = id;
+    link.rel = "stylesheet";
+    link.href = "https://fonts.googleapis.com/css2?family=Great+Vibes&display=swap";
+    document.head.appendChild(link);
+  }, []);
+
+  if (!certificatesReleased) {
+    return (
+      <Box>
+        <Typography variant="h4" sx={{ fontFamily: "'Quicksand', sans-serif", fontWeight: 700, mb: 0.75 }}>
+          Your Certificate
+        </Typography>
+        <Box sx={{ textAlign: "center", py: 8 }}>
+          <WorkspacePremiumRoundedIcon sx={{ fontSize: 72, color: "text.disabled", mb: 2, display: "block", mx: "auto" }} />
+          <Typography variant="h6" sx={{ fontFamily: "'Quicksand', sans-serif", fontWeight: 700, mb: 1, color: "text.secondary" }}>
+            Coming soon
+          </Typography>
+          <Typography variant="body2" color="text.disabled">
+            Your certificate of completion will be available here once the Build-a-thon concludes.
+          </Typography>
+        </Box>
+      </Box>
+    );
+  }
+
+  const eventDate = buildathonEnd
+    ? new Date(buildathonEnd).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })
+    : new Date().toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
+
+  const handleDownload = () => {
+    const win = window.open("", "_blank", "width=1200,height=850");
+    if (!win) return;
+    win.document.write(`<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Certificate – ${participantName}</title>
+  <link href="https://fonts.googleapis.com/css2?family=Great+Vibes&family=Open+Sans:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { width: 100%; height: 100%; }
+    @page { size: A4 landscape; margin: 0; }
+    .cert {
+      position: relative; width: 100%; height: 100vh; overflow: hidden;
+      -webkit-print-color-adjust: exact; print-color-adjust: exact;
+    }
+    .cert-bg {
+      position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+      object-fit: fill;
+      -webkit-print-color-adjust: exact; print-color-adjust: exact;
+    }
+    .ol { position: absolute; z-index: 1; }
+    .name {
+      top: 39%; left: 8.5%;
+      font-family: 'Great Vibes', cursive; font-size: 76px;
+      color: #0066CC; line-height: 1;
+    }
+    .session {
+      top: 55%; left: 11%;
+      font-family: 'Open Sans', sans-serif; font-weight: 600; font-size: 15px;
+      color: #1a1a2e;
+    }
+    .date {
+      top: 61%; left: 22%;
+      font-family: 'Open Sans', sans-serif; font-size: 14px;
+      color: #333;
+    }
+  </style>
+</head>
+<body>
+  <div class="cert">
+    <img class="cert-bg" src="${CERT_TEMPLATE_URL}" alt="" />
+    <div class="ol name">${participantName}</div>
+    <div class="ol session">TaruviBase Build-a-thon</div>
+    <div class="ol date">${eventDate}</div>
+  </div>
+</body>
+</html>`);
+    win.document.close();
+    win.focus();
+    setTimeout(() => { win.print(); win.close(); }, 800);
+  };
+
+  const handleShareLinkedIn = () => {
+    const date = buildathonEnd ? new Date(buildathonEnd) : new Date();
+    const params = new URLSearchParams({
+      startTask: "CERTIFICATION_NAME",
+      name: "TaruviBase Build-a-thon",
+      organizationName: "EOX Vantage",
+      issueYear: String(date.getFullYear()),
+      issueMonth: String(date.getMonth() + 1),
+    });
+    window.open(`https://www.linkedin.com/profile/add?${params.toString()}`, "_blank", "noopener,noreferrer");
+  };
+
+  return (
+    <Box>
+      <Typography variant="h4" sx={{ fontFamily: "'Quicksand', sans-serif", fontWeight: 700, mb: 0.75 }}>
+        Your Certificate
+      </Typography>
+      <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+        Congratulations on completing the Build-a-thon! Download your certificate below.
+      </Typography>
+
+      {/* Certificate preview — background image + text overlays */}
+      <Box
+        sx={{
+          position: "relative",
+          width: "100%",
+          /* maintain 850:598 aspect ratio of the template */
+          paddingBottom: "70.35%",
+          overflow: "hidden",
+          borderRadius: "6px",
+          boxShadow: "0 4px 24px rgba(0,0,0,0.12)",
+          mb: 3,
+        }}
+      >
+        {/* Template background */}
+        <Box
+          component="img"
+          src={CERT_TEMPLATE_URL}
+          alt="Certificate"
+          sx={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "fill", display: "block" }}
+        />
+
+        {/* Participant name */}
+        <Typography
+          sx={{
+            position: "absolute",
+            top: "39%",
+            left: "8.5%",
+            fontFamily: "'Great Vibes', cursive",
+            fontSize: { xs: "7vw", sm: "6vw", md: "4.8vw", lg: "4vw" },
+            color: "#0066CC",
+            lineHeight: 1,
+            whiteSpace: "nowrap",
+          }}
+        >
+          {participantName}
+        </Typography>
+
+        {/* Session title */}
+        <Typography
+          sx={{
+            position: "absolute",
+            top: "55%",
+            left: "11%",
+            fontFamily: "'Open Sans', sans-serif",
+            fontWeight: 600,
+            fontSize: { xs: "1.8vw", sm: "1.5vw", md: "1.2vw" },
+            color: "#1a1a2e",
+            whiteSpace: "nowrap",
+          }}
+        >
+          TaruviBase Build-a-thon
+        </Typography>
+
+        {/* Issue date — placed after the "Issue Date:" label in the template */}
+        <Typography
+          sx={{
+            position: "absolute",
+            top: "61%",
+            left: "22%",
+            fontFamily: "'Open Sans', sans-serif",
+            fontSize: { xs: "1.6vw", sm: "1.3vw", md: "1.1vw" },
+            color: "#333",
+            whiteSpace: "nowrap",
+          }}
+        >
+          {eventDate}
+        </Typography>
+      </Box>
+
+      <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
+        <Button
+          variant="contained"
+          size="large"
+          startIcon={<WorkspacePremiumRoundedIcon />}
+          onClick={handleDownload}
+          sx={{ px: 4 }}
+        >
+          Download Certificate
+        </Button>
+        <Button
+          variant="outlined"
+          size="large"
+          startIcon={<LinkedInIcon />}
+          onClick={handleShareLinkedIn}
+          sx={{ px: 4, borderColor: "#0A66C2", color: "#0A66C2", "&:hover": { borderColor: "#004182", bgcolor: "rgba(10,102,194,0.06)" } }}
+        >
+          Add to LinkedIn
+        </Button>
+      </Stack>
+    </Box>
+  );
+}
+
 // ─── Main Onboarding component ───────────────────────────────────────────────
-const TOTAL_STEPS = 7;
+const TOTAL_STEPS = 8;
 
 // ─── Hackathon picker (shown when user has multiple invitations) ────────────
 function HackathonPickerScreen({
@@ -2393,6 +2625,15 @@ export const Onboarding: React.FC = () => {
                         codespaceStatus={codespaceStatus}
                         codespaceError={codespaceError}
                         secretsStatus={secretsStatus}
+                        onNext={goNext}
+                      />
+                    )}
+                    {step === 7 && (
+                      <CertificateStep
+                        participantName={invitation?.participant_name || displayName}
+                        companyName={company?.name ?? ""}
+                        buildathonEnd={company?.buildathon_end}
+                        certificatesReleased={!!company?.certificates_sent}
                       />
                     )}
                   </Box>
@@ -2436,7 +2677,7 @@ export const Onboarding: React.FC = () => {
         <Box
           sx={{
             position: "fixed",
-            bottom: 0,
+            bottom: 24,
             left: 0,
             zIndex: 10,
             pointerEvents: "none",
