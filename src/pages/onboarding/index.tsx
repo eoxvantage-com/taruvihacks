@@ -1018,7 +1018,7 @@ function CreateAppStep({
   siteSlug?: string;
   onNext: () => void;
 }) {
-  const siteUrl = siteSlug ? `https://${siteSlug}.taruvi.cloud` : null;
+  const siteUrl = siteSlug ? `https://${siteSlug}.taruvibase.cloud` : null;
 
   return (
     <Box>
@@ -1279,7 +1279,7 @@ function RegisterAppStep({
   const [synced, setSynced] = useState(alreadySynced);
   const [syncError, setSyncError] = useState<string | null>(null);
 
-  const siteUrl = invitation?.site_slug ? `https://${invitation.site_slug}.taruvi.cloud` : null;
+  const siteUrl = invitation?.site_slug ? `https://${invitation.site_slug}.taruvibase.cloud` : null;
 
   const handleRegister = async () => {
     const slug = appSlug.trim();
@@ -1529,7 +1529,7 @@ function CodespaceStep({
   secretsStatus: SecretsStatus;
   onNext: () => void;
 }) {
-  const siteUrl = siteSlug ? `https://${siteSlug}.taruvi.cloud` : "";
+  const siteUrl = siteSlug ? `https://${siteSlug}.taruvibase.cloud` : "";
 
   const noGitHub = !githubUsername;
 
@@ -1776,8 +1776,8 @@ function CodespaceStep({
         <Box sx={{ mt: 1, mb: 3 }}>
           <Typography variant="caption" color="text.disabled">
             Your site console:{" "}
-            <a href={`https://${siteSlug}.taruvi.cloud`} target="_blank" rel="noopener noreferrer" style={{ color: BLUE }}>
-              {siteSlug}.taruvi.cloud
+            <a href={`https://${siteSlug}.taruvibase.cloud`} target="_blank" rel="noopener noreferrer" style={{ color: BLUE }}>
+              {siteSlug}.taruvibase.cloud
             </a>
           </Typography>
         </Box>
@@ -2343,7 +2343,7 @@ export const Onboarding: React.FC = () => {
   useEffect(() => {
     if (!githubToken || !codespaceName || !registeredAppSlug) return;
     if (secretsStatus !== "idle") return;
-    const siteUrl = siteSlug ? `https://${siteSlug}.taruvi.cloud` : "";
+    const siteUrl = siteSlug ? `https://${siteSlug}.taruvibase.cloud` : "";
     setSecretsStatus("injecting");
     injectCodespaceSecrets({
       githubToken,
@@ -2363,7 +2363,7 @@ export const Onboarding: React.FC = () => {
   // provider key) right when the codespace becomes Available, before the 2-min warm-up ends.
   useEffect(() => {
     if (!githubToken || !registeredAppSlug || codespaceStarted.current) return;
-    const siteUrl = invitation?.site_slug ? `https://${invitation.site_slug}.taruvi.cloud` : "";
+    const siteUrl = invitation?.site_slug ? `https://${invitation.site_slug}.taruvibase.cloud` : "";
     codespaceStarted.current = true;
     setCodespaceStatus("creating");
 
