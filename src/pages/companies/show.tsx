@@ -696,7 +696,7 @@ export const CompanyShow: React.FC = () => {
               {/* Open Site */}
               {company?.site_slug && (
                 <Box>
-                  <Button variant="outlined" size="small" endIcon={<OpenInNewRoundedIcon sx={{ fontSize: 13 }} />} href={`https://${company.site_slug}.taruvi.cloud`} target="_blank" rel="noopener noreferrer" sx={{ fontSize: 12 }}>
+                  <Button variant="outlined" size="small" endIcon={<OpenInNewRoundedIcon sx={{ fontSize: 13 }} />} href={`https://${company.site_slug}.taruvibase.cloud`} target="_blank" rel="noopener noreferrer" sx={{ fontSize: 12 }}>
                     Open Site
                   </Button>
                 </Box>
@@ -921,7 +921,7 @@ export const CompanyShow: React.FC = () => {
               </Typography>
               <Typography variant="body2">
                 Before participants can register their apps at onboarding step 6, store a permanent site-level API key for{" "}
-                <strong>{company.site_slug}.taruvi.cloud</strong> in hackathonapp secrets as{" "}
+                <strong>{company.site_slug}.taruvibase.cloud</strong> in hackathonapp secrets as{" "}
                 <Box component="code" sx={{ fontFamily: "monospace", fontSize: 12, bgcolor: "info.50", px: 0.75, py: 0.25, borderRadius: 0.75 }}>
                   {company.site_slug}_site_key
                 </Box>.
@@ -929,12 +929,12 @@ export const CompanyShow: React.FC = () => {
                 <Typography
                   component="a"
                   variant="body2"
-                  href={`https://${company.site_slug}.taruvi.cloud`}
+                  href={`https://${company.site_slug}.taruvibase.cloud`}
                   target="_blank"
                   rel="noopener noreferrer"
                   sx={{ color: "info.main", fontWeight: 600 }}
                 >
-                  {company.site_slug}.taruvi.cloud
+                  {company.site_slug}.taruvibase.cloud
                 </Typography>{" "}
                 → Settings → API Keys → create a permanent key.
               </Typography>

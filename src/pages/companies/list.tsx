@@ -361,7 +361,7 @@ export const CompaniesList: React.FC = () => {
             <DialogContent>
               <Stack spacing={2.5} sx={{ mt: 0.5 }}>
                 <Alert severity="success" variant="outlined">
-                  Site <strong>{createdSiteSlug}.taruvi.cloud</strong> is live and the company record has been saved.
+                  Site <strong>{createdSiteSlug}.taruvibase.cloud</strong> is live and the company record has been saved.
                 </Alert>
 
                 <Alert severity="warning" variant="outlined">
@@ -374,18 +374,18 @@ export const CompaniesList: React.FC = () => {
                   <Stack spacing={1}>
                     {[
                       <>Log in to{" "}
-                        <Typography component="a" variant="body2" href={`https://${createdSiteSlug}.taruvi.cloud`} target="_blank" rel="noopener noreferrer" sx={{ color: "inherit", fontWeight: 700 }}>
-                          {createdSiteSlug}.taruvi.cloud
+                        <Typography component="a" variant="body2" href={`https://${createdSiteSlug}.taruvibase.cloud`} target="_blank" rel="noopener noreferrer" sx={{ color: "inherit", fontWeight: 700 }}>
+                          {createdSiteSlug}.taruvibase.cloud
                         </Typography>{" "}
                         as site admin
-                        <IconButton size="small" component="a" href={`https://${createdSiteSlug}.taruvi.cloud`} target="_blank" rel="noopener noreferrer" sx={{ ml: 0.5, p: 0.25 }}>
+                        <IconButton size="small" component="a" href={`https://${createdSiteSlug}.taruvibase.cloud`} target="_blank" rel="noopener noreferrer" sx={{ ml: 0.5, p: 0.25 }}>
                           <OpenInNewRoundedIcon sx={{ fontSize: 13 }} />
                         </IconButton>
                       </>,
                       <>Go to <strong>Settings → API Tokens</strong> → click <strong>Create New Token</strong> → name it anything → click <strong>Generate</strong> → copy the value</>,
                       <>Go to{" "}
-                        <Typography component="a" variant="body2" href="https://hackathonsite.taruvi.cloud" target="_blank" rel="noopener noreferrer" sx={{ color: "inherit", fontWeight: 700 }}>
-                          hackathonsite.taruvi.cloud
+                        <Typography component="a" variant="body2" href="https://hackathonsite.taruvibase.cloud" target="_blank" rel="noopener noreferrer" sx={{ color: "inherit", fontWeight: 700 }}>
+                          hackathonsite.taruvibase.cloud
                         </Typography>{" "}
                         → open <strong>hackathonapp</strong> → click <strong>Secrets</strong> in the sidebar → <strong>Create Secret</strong> → name it{" "}
                         <Box component="code" sx={{ fontFamily: "monospace", fontSize: 12, bgcolor: "warning.50", px: 0.75, py: 0.25, borderRadius: 0.75 }}>
