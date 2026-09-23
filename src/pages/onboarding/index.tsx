@@ -2034,11 +2034,6 @@ function CertificateStep({
       font-family: 'Great Vibes', cursive; font-size: 76px;
       color: #0066CC; line-height: 1;
     }
-    .session {
-      top: 55%; left: 11%;
-      font-family: 'Open Sans', sans-serif; font-weight: 600; font-size: 15px;
-      color: #1a1a2e;
-    }
     .date {
       top: 61%; left: 22%;
       font-family: 'Open Sans', sans-serif; font-size: 14px;
@@ -2050,7 +2045,6 @@ function CertificateStep({
   <div class="cert">
     <img class="cert-bg" src="${CERT_TEMPLATE_URL}" alt="" />
     <div class="ol name">${participantName}</div>
-    <div class="ol session">TaruviBase Build-a-thon</div>
     <div class="ol date">${eventDate}</div>
   </div>
 </body>
@@ -2116,22 +2110,6 @@ function CertificateStep({
           }}
         >
           {participantName}
-        </Typography>
-
-        {/* Session title */}
-        <Typography
-          sx={{
-            position: "absolute",
-            top: "55%",
-            left: "11%",
-            fontFamily: "'Open Sans', sans-serif",
-            fontWeight: 600,
-            fontSize: { xs: "1.8vw", sm: "1.5vw", md: "1.2vw" },
-            color: "#1a1a2e",
-            whiteSpace: "nowrap",
-          }}
-        >
-          TaruviBase Build-a-thon
         </Typography>
 
         {/* Issue date — placed after the "Issue Date:" label in the template */}
