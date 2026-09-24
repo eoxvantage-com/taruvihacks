@@ -1961,8 +1961,16 @@ function ConnectGitHubStep({
 }
 
 // ─── Step 7 — Certificate ───────────────────────────────────────────────────
+function toTitleCase(name: string): string {
+  return name
+    .split(" ")
+    .filter(Boolean)
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .join(" ");
+}
+
 function CertificateStep({
-  participantName,
+  participantName: rawParticipantName,
   companyName,
   buildathonEnd,
   certificatesReleased,
@@ -1972,6 +1980,8 @@ function CertificateStep({
   buildathonEnd?: string;
   certificatesReleased: boolean;
 }) {
+  const participantName = toTitleCase(rawParticipantName);
+
   // Load script font for the name overlay
   useEffect(() => {
     const id = "cert-great-vibes";
@@ -2035,7 +2045,7 @@ function CertificateStep({
       color: #0066CC; line-height: 1;
     }
     .date {
-      top: 61%; left: 22%;
+      top: 63%; left: 23.5%;
       font-family: 'Open Sans', sans-serif; font-size: 14px;
       color: #333;
     }
@@ -2059,6 +2069,7 @@ function CertificateStep({
     const params = new URLSearchParams({
       startTask: "CERTIFICATION_NAME",
       name: "TaruviBase Build-a-thon",
+      organizationId: "126632", // EOX Vantage's LinkedIn company page — lets LinkedIn auto-fill its logo
       organizationName: "EOX Vantage",
       issueYear: String(date.getFullYear()),
       issueMonth: String(date.getMonth() + 1),
@@ -2116,8 +2127,8 @@ function CertificateStep({
         <Typography
           sx={{
             position: "absolute",
-            top: "61%",
-            left: "22%",
+            top: "63%",
+            left: "23.5%",
             fontFamily: "'Open Sans', sans-serif",
             fontSize: { xs: "1.6vw", sm: "1.3vw", md: "1.1vw" },
             color: "#333",
@@ -2537,6 +2548,10 @@ export const Onboarding: React.FC = () => {
             background: PAGE_BG,
             py: { xs: 5, md: 7 },
             px: { xs: 2, md: 4 },
+            // Reserve room below the content so the fixed Taru character + speech
+            // bubble (shown on most steps) never overlaps the Continue/Back buttons
+            // on shorter (laptop-height) viewports. Steps 4 and 7 don't render it.
+            pb: (step !== 4 && step !== 7) ? { xs: "220px", md: "260px" } : { xs: 5, md: 7 },
           }}
         >
           <Box sx={{ maxWidth: "75vw", mx: "auto" }}>
