@@ -88,6 +88,7 @@ interface Invitation {
   participant_app_slug?: string;
   provider_sync_status?: string;
   provider_synced_at?: string;
+  certificate_sent?: boolean;
 }
 
 interface Theme {
@@ -371,13 +372,45 @@ export const CompanyShow: React.FC = () => {
   // ── Release certificates ─────────────────────────────────────────────────
   const [certSending, setCertSending] = useState(false);
 
+  const pendingCertificates = invitations.filter((i) => !i.certificate_sent).length;
+
+  const deliverCertificates = async () => {
+    setCertSending(true);
+    try {
+      // The function handles a small batch per call so each call stays under the 30s sync limit.
+      let sent = 0;
+      let missingName = 0;
+      const failed: { invitation_id: string; email: string; error: string }[] = [];
+      let remaining = 0;
+      do {
+        const result = await sendCertificateEmails(companyId, failed.map((f) => f.invitation_id));
+        sent += result.emails_sent ?? 0;
+        missingName = result.skipped_missing_name ?? 0;
+        failed.push(...(result.errors ?? []));
+        remaining = result.remaining ?? 0;
+      } while (remaining > 0);
+      await Promise.all([refetchCompany(), invitationsQuery.refetch()]);
+      const summary = [
+        `${sent} certificate(s) emailed`,
+        failed.length ? `${failed.length} failed` : "",
+        missingName ? `${missingName} skipped (no participant name)` : "",
+      ].filter(Boolean).join(", ");
+      notify?.({ message: `${summary}.`, type: failed.length || missingName ? "error" : "success" });
+    } catch (err: unknown) {
+      await Promise.all([refetchCompany(), invitationsQuery.refetch()]);
+      notify?.({ message: err instanceof Error ? err.message : "Failed to send certificates.", type: "error" });
+    }
+    setCertSending(false);
+  };
+
   const handleSendCertificates = () => {
     if (!companyId) return;
     setCertSending(true);
+    // The function refuses to send until certificates_sent is true, so set the flag first.
     updateCompany(
       { resource: "companies", id: companyId, values: { certificates_sent: true } },
       {
-        onSuccess: () => { setCertSending(false); notify?.({ message: "Certificates released — participants can now download them.", type: "success" }); },
+        onSuccess: () => { void deliverCertificates(); },
         onError: () => { setCertSending(false); notify?.({ message: "Failed to release certificates.", type: "error" }); },
       }
     );
@@ -680,13 +713,13 @@ export const CompanyShow: React.FC = () => {
                     {company?.certificates_sent ? "Released to participants" : "Not yet released"}
                   </Typography>
                 </Box>
-                {company?.certificates_sent ? (
+                {company?.certificates_sent && pendingCertificates === 0 ? (
                   <Chip icon={<MarkEmailReadRoundedIcon sx={{ fontSize: 13 }} />} label="Released" color="success" size="small" sx={{ fontWeight: 600, flexShrink: 0 }} />
                 ) : (
-                  <Tooltip title="Release certificates so participants can download them from their portal">
+                  <Tooltip title={company?.certificates_sent ? `Send certificates to the ${pendingCertificates} participant(s) who haven't received one` : "Generate certificates and email them to participants"}>
                     <span>
-                      <Button size="small" variant="outlined" startIcon={certSending ? <CircularProgress size={12} color="inherit" /> : <WorkspacePremiumRoundedIcon sx={{ fontSize: 13 }} />} disabled={certSending} onClick={handleSendCertificates} sx={{ height: 28, fontSize: 11, flexShrink: 0 }}>
-                        {certSending ? "Releasing…" : "Release"}
+                      <Button size="small" variant="outlined" startIcon={certSending ? <CircularProgress size={12} color="inherit" /> : <WorkspacePremiumRoundedIcon sx={{ fontSize: 13 }} />} disabled={certSending} onClick={company?.certificates_sent ? () => { void deliverCertificates(); } : handleSendCertificates} sx={{ height: 28, fontSize: 11, flexShrink: 0 }}>
+                        {certSending ? "Sending…" : company?.certificates_sent ? "Send pending" : "Release"}
                       </Button>
                     </span>
                   </Tooltip>

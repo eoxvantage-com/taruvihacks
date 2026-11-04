@@ -102,8 +102,21 @@ export async function sendSurveyEmails(companyId: string): Promise<Record<string
   return callFunction("send-hackathon-survey-emails", { company_id: companyId });
 }
 
-export async function sendCertificateEmails(companyId: string): Promise<Record<string, unknown>> {
-  return callFunction("send-hackathon-certificates", { company_id: companyId });
+export interface CertificateSendResult {
+  emails_sent?: number;
+  skipped_already_sent?: number;
+  skipped_missing_name?: number;
+  /** Invitations still waiting after this batch; call again to continue. */
+  remaining?: number;
+  errors?: { invitation_id: string; email: string; error: string }[] | null;
+}
+
+// Each certificate takes about 7s to generate and email, so 3 stays clear of the 30s sync limit.
+const CERTIFICATE_BATCH_SIZE = 3;
+
+/** Sends one batch. Pass the IDs that already failed so a retry doesn't block the rest of the queue. */
+export async function sendCertificateEmails(companyId: string, excludeIds: string[] = []): Promise<CertificateSendResult> {
+  return callFunction("send-hackathon-certificates", { company_id: companyId, exclude_ids: excludeIds, limit: CERTIFICATE_BATCH_SIZE }) as Promise<CertificateSendResult>;
 }
 
 export async function storeProviderKey(params: {
